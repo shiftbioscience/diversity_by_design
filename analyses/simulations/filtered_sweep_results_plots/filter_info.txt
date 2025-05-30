@@ -1,0 +1,5 @@
+Applied filters (ranges):
+P: 30 to 40
+B: 1 to 2
+
+Total data points after filtering: 288
