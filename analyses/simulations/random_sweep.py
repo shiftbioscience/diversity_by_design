@@ -459,12 +459,12 @@ def run_random_sweep_final(n_trials, param_ranges, output_dir, control_mu=None, 
 
 
 if __name__ == "__main__":
-    output_dir = "simulations/random_sweep_results" # New output dir
+    output_dir = "analyses/simulations/random_sweep_results" # New output dir
     
     # Load fitted parameters from parameter estimation files
-    control_params_df = pd.read_csv("simulations/parameter_estimation/control_fitted_params.csv", index_col=0)
-    perturbed_params_df = pd.read_csv("simulations/parameter_estimation/perturbed_fitted_params.csv", index_col=0)
-    all_params_df = pd.read_csv("simulations/parameter_estimation/all_fitted_params.csv", index_col=0)
+    control_params_df = pd.read_csv("analyses/simulations/parameter_estimation/control_fitted_params.csv", index_col=0)
+    perturbed_params_df = pd.read_csv("analyses/simulations/parameter_estimation/perturbed_fitted_params.csv", index_col=0)
+    all_params_df = pd.read_csv("analyses/simulations/parameter_estimation/all_fitted_params.csv", index_col=0)
     
     print("Using theta estimates from all cells combined")
     
@@ -488,14 +488,16 @@ if __name__ == "__main__":
         'mu_l': {'type': 'log_float', 'min': 0.2, 'max': 5.0} # 0.2, 5.0
     }
     
-    n_trials = 30000
+    n_trials = 10000
     # Call the final version of run_random_sweep
+    print("Running the sweep...")
+    print("Multiprocessing can be memory intensive, so if running into swap, reduce the number of workers.")
     csv_file = run_random_sweep_final(n_trials, param_ranges, output_dir, 
                                       control_mu=main_control_mu_loaded, 
                                       all_theta=main_all_theta_loaded,
                                       pert_mu=main_pert_mu_loaded,
-                                      num_workers=128)
+                                      num_workers=64)
     print("\nDone doing the sweep. Plotting results...")
 
     # Run uv run python simulations/simulation_plots.py
-    os.system(f"uv run python simulations/simulation_plots.py {csv_file}")
+    os.system(f"uv run python analyses/simulations/simulation_plots.py {csv_file}")
