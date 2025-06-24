@@ -6,7 +6,7 @@ warnings.filterwarnings('ignore')
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--multiprocessing', type=bool, default=True)
+parser.add_argument('--multiprocessing', action='store_true', default=False)
 args = parser.parse_args()
 
 MULTIPROCESSING = args.multiprocessing
