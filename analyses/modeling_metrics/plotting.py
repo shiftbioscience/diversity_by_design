@@ -1658,9 +1658,3 @@ plot_deg_quantile_impact(df_quantile_results, 'Weighted R-Squared Delta',
                          r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', 
                          r'$R^2_w(\Delta)$', PLOT_DIR, DATASET_NAME)
 
-
-
-
-
-
-# %%
