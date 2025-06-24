@@ -3,11 +3,20 @@
 import warnings
 warnings.filterwarnings('ignore')
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--multiprocessing', type=bool, default=True)
+args = parser.parse_args()
+
+MULTIPROCESSING = args.multiprocessing
+
 import os
 import multiprocessing as mp
 
-# Set multiprocessing start method to spawn to avoid CUDA initialization errors
-mp.set_start_method('spawn', force=True)
+if MULTIPROCESSING:
+    # Set multiprocessing start method to spawn to avoid CUDA initialization errors
+    mp.set_start_method('spawn', force=True)
 
 if not os.path.exists('../../data/norman19/norman19_processed.h5ad'):
     raise FileNotFoundError('../../data/norman19/norman19_processed.h5ad')
@@ -229,7 +238,10 @@ def train_single_model(config):
     loss, weight, model_half, gpu_id = config
     
     # Use the specific GPU directly
-    device = f'cuda:{gpu_id}'
+    if MULTIPROCESSING:
+        device = f'cuda:{gpu_id}'
+    else:
+        device = 'cuda'
     
     # Check if predictions already exist
     if os.path.exists(f'../../data/norman19/gears_predictions_{loss}_{weight}_norman19.pkl'):
@@ -376,8 +388,12 @@ if __name__ == '__main__':
             gpu_id += 1
 
     # Run training in parallel across all 8 GPUs
-    with mp.Pool(processes=8) as pool:
-        pool.map(train_single_model, configurations)
+    if MULTIPROCESSING:
+        with mp.Pool(processes=8) as pool:
+            pool.map(train_single_model, configurations)
+    else:
+        for config in configurations:
+            train_single_model(config)
 
     # Combine predictions for each loss/weight combination
     for loss in losses:

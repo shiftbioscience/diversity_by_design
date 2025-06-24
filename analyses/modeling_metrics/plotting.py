@@ -3,21 +3,21 @@
 import warnings
 warnings.filterwarnings('ignore')
 
-# # %%
-# import argparse
+# %%
+import argparse
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--dataset', type=str, default='norman19', choices=['norman19', 'replogle22'])
-# args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', type=str, default='norman19', choices=['norman19', 'replogle22'])
+args = parser.parse_args()
 
-# DATASET_NAME = args.dataset
+DATASET_NAME = args.dataset
 
 # %%
 import os
 
 
 # Configure dataset
-DATASET_NAME = 'replogle22' 
+# DATASET_NAME = 'replogle22' 
 
 
 if DATASET_NAME == 'replogle22':
@@ -297,7 +297,7 @@ for pert in tqdm(all_perts_for_predictive, desc="Processing perturbations"):
 
 # %%
 # Create plots for the predictive baseline metrics
-PLOT_DIR = f'{ANALYSIS_DIR}/plots/'
+PLOT_DIR = f'{ANALYSIS_DIR}/{DATASET_NAME}/'
 os.makedirs(PLOT_DIR, exist_ok=True)
 
 # Process data for plotting

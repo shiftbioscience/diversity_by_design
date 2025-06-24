@@ -6,9 +6,17 @@ warnings.filterwarnings('ignore')
 import os
 import multiprocessing as mp
 import torch
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--multiprocessing', type=bool, default=True)
+args = parser.parse_args()
+
+MULTIPROCESSING = args.multiprocessing
 
 # Set multiprocessing start method to spawn to avoid CUDA initialization errors
-mp.set_start_method('spawn', force=True)
+if MULTIPROCESSING:
+    mp.set_start_method('spawn', force=True)
 
 if not os.path.exists('../../data/replogle22/replogle22_processed.h5ad'):
     raise FileNotFoundError('../../data/replogle22/replogle22_processed.h5ad')
@@ -377,11 +385,12 @@ if __name__ == '__main__':
             gpu_id += 1
 
     # Run training in parallel across available GPUs
-    with mp.Pool(processes=8) as pool:
-        pool.map(train_single_model, configurations)
-    # for config in configurations:
-    #     print(config)
-    #     train_single_model(config)
+    if MULTIPROCESSING:
+        with mp.Pool(processes=8) as pool:
+            pool.map(train_single_model, configurations)
+    else:
+        for config in configurations:
+            train_single_model(config)
 
     # Combine predictions for each loss/weight combination
     for loss in losses:
