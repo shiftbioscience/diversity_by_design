@@ -5,6 +5,7 @@ warnings.filterwarnings('ignore')
 
 import os
 import multiprocessing as mp
+import torch
 
 # Set multiprocessing start method to spawn to avoid CUDA initialization errors
 mp.set_start_method('spawn', force=True)
@@ -95,6 +96,7 @@ gears_predictions = {}
 print("Creating data copy...")
 adata_gears = adata.copy()
 np.random.seed(42)  # Set random seed for reproducibility
+torch.manual_seed(42)
 
 # Process condition labels - Replogle22 only has single genes, so add +ctrl to all
 print("Processing condition labels...")
@@ -120,7 +122,7 @@ print(f"Second half: {len(second_half_perturbations)} perturbations")
 print("\nProcessing first half splits...")
 first_half_train_val = first_half_perturbations.copy()
 np.random.shuffle(first_half_train_val)
-split_idx = int(len(first_half_train_val) * 0.8) # 80% train, 20% val
+split_idx = int(len(first_half_train_val) * 0.9) # 90% train, 10% val
 first_half_train = first_half_train_val[:split_idx]
 first_half_val = first_half_train_val[split_idx:]
 
@@ -135,7 +137,7 @@ print(f"First half splits - Train: {len(first_half_train)}, Val: {len(first_half
 print("\nProcessing second half splits...")
 second_half_train_val = second_half_perturbations.copy()
 np.random.shuffle(second_half_train_val) 
-split_idx = int(len(second_half_train_val) * 0.8)  # 80% train, 20% val
+split_idx = int(len(second_half_train_val) * 0.9)  # 90% train, 10% val
 second_half_train = second_half_train_val[:split_idx]
 second_half_val = second_half_train_val[split_idx:]
 
@@ -225,10 +227,10 @@ def train_single_model(config):
     # Use the specific GPU directly
     device = f'cuda:{gpu_id}'
     
-    # Check if predictions already exist
-    if os.path.exists(f'../../data/replogle22/gears_predictions_{loss}_{weight}_replogle22.pkl'):
-        print(f"Predictions already exist for {loss} loss and {weight} weight, skipping...")
-        return
+    # # Check if predictions already exist
+    # if os.path.exists(f'../../data/replogle22/gears_predictions_{loss}_{weight}_replogle22.pkl'):
+    #     print(f"Predictions already exist for {loss} loss and {weight} weight, skipping...")
+    #     return
     
     print(f"Training GEARS {model_half} model with {loss} loss and {weight} weight on GPU {gpu_id}")
     
@@ -263,22 +265,27 @@ def train_single_model(config):
     # ===================GEARS MODEL TRAINING ===================
     
     if model_half == 'first_half':
-        # Train first half model
         gears_model = GEARS(pert_data_first_half, device = device, 
-                           weight_bias_track = False, 
-                           proj_name = 'first_half_replogle22', 
-                           exp_name = f'first_half_{loss}_{weight}',
-                           loss_weights_dict = loss_weights_dict,
-                           use_mse_loss = True if loss == 'mse' else False)
+                weight_bias_track = False, 
+                proj_name = 'first_half_replogle22', 
+                exp_name = f'first_half_{loss}_{weight}',
+                loss_weights_dict = loss_weights_dict,
+                use_mse_loss = True if loss == 'mse' else False)
         gears_model.model_initialize()
-        gears_model.train(epochs = 10)
-        
-        os.makedirs("../../data/replogle22/gears_models", exist_ok=True)
-        gears_model.save_model(f'../../data/replogle22/gears_models/replogle22_first_half_{loss}_{weight}')
+        if not os.path.exists(f'../../data/replogle22/gears_models/replogle22_first_half_{loss}_{weight}'):
+            # Train first half model
+
+            gears_model.train(epochs = 10)
+            
+            os.makedirs("../../data/replogle22/gears_models", exist_ok=True)
+            gears_model.save_model(f'../../data/replogle22/gears_models/replogle22_first_half_{loss}_{weight}')
+        else:  
+            print(f"Loading pretrained model for first half {loss}_{weight}")
+            gears_model.load_pretrained(f'../../data/replogle22/gears_models/replogle22_first_half_{loss}_{weight}')
         
         # Save partial results
         assert not any(pert in first_half_split_dict['test'] for pert in first_half_split_dict['train'])
-        to_predict = [gene.split('+') for gene in first_half_split_dict['test'] if gene.split('+')[0] in pert_data_first_half.gene2go.keys() and gene.split('+')[1] in pert_data_first_half.gene2go.keys()]
+        to_predict = [[gene.split('+')[0]] for gene in first_half_split_dict['test'] if gene.split('+')[0] in pert_data_first_half.gene2go.keys()]
         predictions = gears_model.predict(to_predict)
         with open(f'../../data/replogle22/gears_predictions_{loss}_{weight}_first_half_temp.pkl', 'wb') as f:
             pickle.dump(predictions, f)
@@ -292,14 +299,18 @@ def train_single_model(config):
                            loss_weights_dict = loss_weights_dict,
                            use_mse_loss = True if loss == 'mse' else False)
         gears_model.model_initialize()
-        gears_model.train(epochs = 10)
+        if not os.path.exists(f'../../data/replogle22/gears_models/replogle22_second_half_{loss}_{weight}'):
+            gears_model.train(epochs = 10)
 
-        os.makedirs("../../data/replogle22/gears_models", exist_ok=True)
-        gears_model.save_model(f'../../data/replogle22/gears_models/replogle22_second_half_{loss}_{weight}')
+            os.makedirs("../../data/replogle22/gears_models", exist_ok=True)
+            gears_model.save_model(f'../../data/replogle22/gears_models/replogle22_second_half_{loss}_{weight}')
+        else:
+            print(f"Loading pretrained model for second half {loss}_{weight}")
+            gears_model.load_pretrained(f'../../data/replogle22/gears_models/replogle22_second_half_{loss}_{weight}')
         
         # Save partial results
         assert not any(pert in second_half_split_dict['test'] for pert in second_half_split_dict['train'])
-        to_predict = [gene.split('+') for gene in second_half_split_dict['test'] if gene.split('+')[0] in pert_data_second_half.gene2go.keys() and gene.split('+')[1] in pert_data_second_half.gene2go.keys()]
+        to_predict = [[gene.split('+')[0]] for gene in second_half_split_dict['test'] if gene.split('+')[0] in pert_data_second_half.gene2go.keys()]
         predictions = gears_model.predict(to_predict)
         with open(f'../../data/replogle22/gears_predictions_{loss}_{weight}_second_half_temp.pkl', 'wb') as f:
             pickle.dump(predictions, f)
@@ -317,35 +328,34 @@ def combine_predictions(loss, weight):
     # Check if both temp files exist
     first_half_file = f'../../data/replogle22/gears_predictions_{loss}_{weight}_first_half_temp.pkl'
     second_half_file = f'../../data/replogle22/gears_predictions_{loss}_{weight}_second_half_temp.pkl'
-    
-    if os.path.exists(first_half_file) and os.path.exists(second_half_file):
         # Load predictions
-        with open(first_half_file, 'rb') as f:
-            predictions_from_first_half = pickle.load(f)
-        with open(second_half_file, 'rb') as f:
-            predictions_from_second_half = pickle.load(f)
-        
-        # Load control mean from the original adata
-        adata = sc.read_h5ad('../../data/replogle22/replogle22_processed.h5ad')
-        ctrl_mean = np.array(adata[adata.obs['condition'] == 'control'].X.mean(axis=0)).flatten()
-        
-        # Combine predictions
-        gears_predictions = {}
-        for pert in predictions_from_second_half.keys():
-            gears_predictions[pert.replace('_', '+')] = predictions_from_second_half[pert]
-        for pert in predictions_from_first_half.keys():
-            gears_predictions[pert.replace('_', '+')] = predictions_from_first_half[pert]
-        gears_predictions['control'] = ctrl_mean
-        
-        # Save combined predictions
-        with open(f'../../data/replogle22/gears_predictions_{loss}_{weight}_replogle22.pkl', 'wb') as f:
-            pickle.dump(gears_predictions, f)
-        
-        # Clean up temp files
-        os.remove(first_half_file)
-        os.remove(second_half_file)
-        
-        print(f"Combined and saved predictions for {loss} loss and {weight} weight")
+    with open(first_half_file, 'rb') as f:
+        predictions_from_first_half = pickle.load(f)
+    with open(second_half_file, 'rb') as f:
+        predictions_from_second_half = pickle.load(f)
+
+    
+    # Load control mean from the original adata
+    adata = sc.read_h5ad('../../data/replogle22/replogle22_processed.h5ad')
+    ctrl_mean = np.array(adata[adata.obs['condition'] == 'control'].X.mean(axis=0)).flatten()
+    
+    # Combine predictions
+    gears_predictions = {}
+    for pert in predictions_from_second_half.keys():
+        gears_predictions[pert.replace('_', '+')] = predictions_from_second_half[pert]
+    for pert in predictions_from_first_half.keys():
+        gears_predictions[pert.replace('_', '+')] = predictions_from_first_half[pert]
+    gears_predictions['control'] = ctrl_mean
+    
+    # Save combined predictions
+    with open(f'../../data/replogle22/gears_predictions_{loss}_{weight}_replogle22.pkl', 'wb') as f:
+        pickle.dump(gears_predictions, f)
+    
+    # # Clean up temp files
+    # os.remove(first_half_file)
+    # os.remove(second_half_file)
+    
+    print(f"Combined and saved predictions for {loss} loss and {weight} weight")
 
 # %%
 
@@ -359,8 +369,7 @@ if __name__ == '__main__':
     gpu_id = 0
     for loss in losses:
         for weight in weights:
-            if loss == 'default_loss' and weight == 'weighted':
-                continue  # Skip this combination as in Norman19
+
             # Add both first_half and second_half as separate jobs
             configurations.append((loss, weight, 'first_half', gpu_id % 8))
             gpu_id += 1
@@ -368,8 +377,11 @@ if __name__ == '__main__':
             gpu_id += 1
 
     # Run training in parallel across available GPUs
-    with mp.Pool(processes=6) as pool:
+    with mp.Pool(processes=8) as pool:
         pool.map(train_single_model, configurations)
+    # for config in configurations:
+    #     print(config)
+    #     train_single_model(config)
 
     # Combine predictions for each loss/weight combination
     for loss in losses:
@@ -377,7 +389,6 @@ if __name__ == '__main__':
             if loss == 'default_loss' and weight == 'weighted':
                 continue  # Skip this combination
             combine_predictions(loss, weight)
-
     # Load all predictions into gears_predictions dictionary
     gears_predictions = {}
     for loss in losses:

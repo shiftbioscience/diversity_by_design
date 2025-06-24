@@ -13,14 +13,16 @@ Install the dependencies
 uv sync
 ```
 
-Get the data:
+## Workflow to run analyses from paper
+
+1. Get the data:
 
 ```bash
 uv run data/norman19/get_data.py
 uv run data/replogle22/get_data.py
 ```
 
-Run simulations:
+2. Run simulations:
 
 ```bash
 uv run analyses/simulations/parameter_estimation.py

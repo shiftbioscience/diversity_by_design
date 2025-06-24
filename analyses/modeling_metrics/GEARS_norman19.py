@@ -126,7 +126,7 @@ print(f"Second half: {len(second_half_perturbations)} perturbations")
 print("\nProcessing first half splits...")
 first_half_train_val = first_half_perturbations
 np.random.shuffle(first_half_train_val)
-split_idx = int(len(first_half_train_val) * 0.8) # 80% train, 10% val
+split_idx = int(len(first_half_train_val) * 0.9) # 90% train, 10% val
 first_half_train = first_half_train_val[:split_idx]
 first_half_val = first_half_train_val[split_idx:]
 
@@ -141,7 +141,7 @@ print(f"First half splits - Train: {len(first_half_train)}, Val: {len(first_half
 print("\nProcessing second half splits...")
 second_half_train_val = second_half_perturbations
 np.random.shuffle(second_half_train_val) 
-split_idx = int(len(second_half_train_val) * 0.8)  # 80% train, 10% val
+split_idx = int(len(second_half_train_val) * 0.9)  # 90% train, 10% val
 second_half_train = second_half_train_val[:split_idx]
 second_half_val = second_half_train_val[split_idx:]
 
