@@ -18,8 +18,8 @@ uv sync
 1. Get the data:
 
 ```bash
-uv run data/norman19/get_data.py
-uv run data/replogle22/get_data.py
+uv run data/norman19/get_data.py # Will take a few minutes
+uv run data/replogle22/get_data.py # Will take a few minutes
 ```
 
 2. Run synthetic data simulations:

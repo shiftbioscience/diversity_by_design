@@ -261,7 +261,7 @@ def main():
         window = 100
         
         # Define save paths for all plots
-        plot_dir = 'analyses/simulations/paper_plots'
+        plot_dir = 'analyses/synthetic_simulations/paper_plots'
         os.makedirs(plot_dir, exist_ok=True)
         
         control_bias_path = os.path.join(plot_dir, 'pearson_delta_vs_control_bias.pdf')

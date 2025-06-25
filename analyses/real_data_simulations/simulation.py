@@ -17,15 +17,8 @@ from tqdm import tqdm
 import os
 import argparse
 import matplotlib.colors as colors
-from scipy.stats import gaussian_kde, ttest_ind, ranksums # Added ranksums
-from sklearn.metrics import r2_score # Import r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.neural_network import MLPRegressor
-from scipy.sparse import csr_matrix
+from scipy.stats import gaussian_kde
 from scipy.stats import pearsonr
-from typing import Optional # Added for Optional type hint
 import pickle
 import sys
 sys.path.append(os.path.dirname(os.getcwd())) # For finding the 'analyses' package

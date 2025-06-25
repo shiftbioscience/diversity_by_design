@@ -1,6 +1,6 @@
 # Adapted from https://github.com/altoslabs/perturbench/blob/4dd6a03c54ef348f6be6e46e21ea7f80eb2daaa2/notebooks/neurips2024/data_curation/curate_Norman19.ipynb
 # This is performed using the base installation of 
-
+# FIXME: Remove unnecessary imports
 import scanpy as sc
 import os
 import subprocess as sp
@@ -16,6 +16,71 @@ np.random.seed(42)
 
 data_url = 'https://zenodo.org/records/7041849/files/NormanWeissman2019_filtered.h5ad?download=1'
 data_cache_dir = './data/norman19'
+
+def compute_degs(adata, mode='vsrest', pval_threshold=0.05):
+    """
+    Compute differentially expressed genes (DEGs) for each perturbation.
+    
+    Args:
+        adata: AnnData object with processed data
+        mode: 'vsrest' or 'vscontrol'
+            - 'vsrest': Compare each perturbation vs all other perturbations (excluding control)
+            - 'vscontrol': Compare each perturbation vs control only
+        pval_threshold: P-value threshold for significance (default: 0.05)
+    
+    Returns:
+        dict: rank_genes_groups results dictionary
+        
+    Adds to adata.uns:
+        - deg_dict_{mode}: Dictionary with perturbation as key and dict with 'up'/'down' DEGs as values
+        - rank_genes_groups_{mode}: Full rank_genes_groups results
+    """
+    if mode == 'vsrest':
+        # Remove control cells for vsrest analysis
+        adata_subset = adata[adata.obs['condition'] != 'control'].copy()
+        reference = 'rest'
+    elif mode == 'vscontrol':
+        # Use full dataset for vscontrol analysis
+        adata_subset = adata.copy()
+        reference = 'control'
+    else:
+        raise ValueError("mode must be 'vsrest' or 'vscontrol'")
+    
+    # Compute DEGs
+    sc.tl.rank_genes_groups(adata_subset, 'condition', method='t-test_overestim_var', reference=reference)
+    
+    # Extract results
+    names_df = pd.DataFrame(adata_subset.uns["rank_genes_groups"]["names"])
+    pvals_adj_df = pd.DataFrame(adata_subset.uns["rank_genes_groups"]["pvals_adj"])
+    logfc_df = pd.DataFrame(adata_subset.uns["rank_genes_groups"]["logfoldchanges"])
+    
+    # For each perturbation, get the significant DEGs up and down regulated
+    deg_dict = {}
+    for pert in tqdm(adata_subset.obs['condition'].unique(), desc=f"Computing DEGs {mode}"):
+        if mode == 'vscontrol' and pert == 'control':
+            continue  # Skip control when comparing vs control
+            
+        pert_degs = names_df[pert]
+        pert_pvals = pvals_adj_df[pert]
+        pert_logfc = logfc_df[pert]
+        
+        # Get significant DEGs
+        significant_mask = pert_pvals < pval_threshold
+        pert_degs_sig = pert_degs[significant_mask]
+        pert_logfc_sig = pert_logfc[significant_mask]
+        
+        # Split into up and down regulated
+        pert_degs_sig_up = pert_degs_sig[pert_logfc_sig > 0].tolist()
+        pert_degs_sig_down = pert_degs_sig[pert_logfc_sig < 0].tolist()
+        
+        deg_dict[pert] = {'up': pert_degs_sig_up, 'down': pert_degs_sig_down}
+    
+    # Save results to adata.uns
+    adata.uns[f'deg_dict_{mode}'] = deg_dict
+    adata.uns[f'rank_genes_groups_{mode}'] = adata_subset.uns['rank_genes_groups'].copy()
+    
+    return adata_subset.uns['rank_genes_groups']
+
 
 if not os.path.exists(data_cache_dir):
     os.makedirs(data_cache_dir)
@@ -98,45 +163,10 @@ sc.tl.umap(adata)
 # Do clustering
 sc.tl.leiden(adata)
 
-# Calculate DEGs between each perturbation and all other perturbations
-sc.tl.rank_genes_groups(adata, 'condition', method='t-test_overestim_var', reference='rest')
-# Turn the rank_genes_groups into a dataframe
-names_df = pd.DataFrame(adata.uns["rank_genes_groups"]["names"])
-pvals_adj_df = pd.DataFrame(adata.uns["rank_genes_groups"]["pvals_adj"])
-logfc_df = pd.DataFrame(adata.uns["rank_genes_groups"]["logfoldchanges"])
-# For each perturbation, get the significant DEGs up and down regulated
-deg_dict = {}
-for pert in tqdm(adata.obs['condition'].unique()):
-    pert_degs = names_df[pert]
-    pert_degs_sig = pert_degs[pvals_adj_df[pert] < 0.05]
-    pert_degs_sig_up = pert_degs_sig[logfc_df[pert] > 0]
-    pert_degs_sig_down = pert_degs_sig[logfc_df[pert] < 0]
-    deg_dict[pert] = {'up': pert_degs_sig_up.tolist(), 'down': pert_degs_sig_down.tolist()}
 
-# Save the DEG dict
-adata.uns['deg_dict_vsrest'] = deg_dict
-adata.uns['rank_genes_groups_vsrest'] = adata.uns['rank_genes_groups'].copy()
-
-# Calculate DEGs with respect to the control perturbation
-sc.tl.rank_genes_groups(adata, 'condition', method='t-test_overestim_var', reference='control')
-names_df = pd.DataFrame(adata.uns["rank_genes_groups"]["names"])
-pvals_adj_df = pd.DataFrame(adata.uns["rank_genes_groups"]["pvals_adj"])
-logfc_df = pd.DataFrame(adata.uns["rank_genes_groups"]["logfoldchanges"])
-# For each perturbation, get the significant DEGs up and down regulated
-deg_dict = {}
-for pert in tqdm(adata.obs['condition'].unique()):
-    if pert == 'control':
-        continue
-    pert_degs = names_df[pert]
-    pert_degs_sig = pert_degs[pvals_adj_df[pert] < 0.05]
-    pert_degs_sig_up = pert_degs_sig[logfc_df[pert] > 0]
-    pert_degs_sig_down = pert_degs_sig[logfc_df[pert] < 0]
-    deg_dict[pert] = {'up': pert_degs_sig_up.tolist(), 'down': pert_degs_sig_down.tolist()}
-
-# Save the DEG dict
-adata.uns['deg_dict_vscontrol'] = deg_dict
-adata.uns['rank_genes_groups_vscontrol'] = adata.uns['rank_genes_groups'].copy()
-
+# Compute DEGs vs rest and vs control
+_ = compute_degs(adata, mode='vsrest')
+_ = compute_degs(adata, mode='vscontrol')
 
 # Convert to format that can be saved
 SCORE_TYPE = 'scores' # or 'logfoldchanges'
@@ -196,19 +226,10 @@ for i, quantile in tqdm(enumerate(quantiles)):
         adatas_quantiles.append(adata[cell_ids[quantile_cells_idx]])
     adata_quantile = sc.concat(adatas_quantiles)
     # Get DEGs vs rest
-    sc.tl.rank_genes_groups(adata_quantile, 'condition', method='t-test_overestim_var', reference='rest')
-    names_df_vsrest = pd.DataFrame(adata_quantile.uns["rank_genes_groups"]["names"])
-    scores_df_vsrest = pd.DataFrame(adata_quantile.uns["rank_genes_groups"][SCORE_TYPE])
-    # # Save the dataframes to pkl
-    # names_df_vsrest.to_pickle(f'{data_cache_dir}/norman19_names_df_vsrest.quantile{i}.pkl')
-    # scores_df_vsrest.to_pickle(f'{data_cache_dir}/norman19_scores_df_vsrest.quantile{i}.pkl')
-    # # Get DEGs vs control
-    # sc.tl.rank_genes_groups(adata_quantile, 'condition', method='t-test_overestim_var', reference='control')
-    # names_df_vsctrl = pd.DataFrame(adata_quantile.uns["rank_genes_groups"]["names"])
-    # scores_df_vsctrl = pd.DataFrame(adata_quantile.uns["rank_genes_groups"][SCORE_TYPE])
-    # # Save the dataframes to pkl
-    # names_df_vsctrl.to_pickle(f'{data_cache_dir}/norman19_names_df_vsctrl.quantile{i}.pkl')
-    # scores_df_vsctrl.to_pickle(f'{data_cache_dir}/norman19_scores_df_vsctrl.quantile{i}.pkl')
+    curr_deg_results = compute_degs(adata_quantile, mode='vsrest')
+    names_df_vsrest = pd.DataFrame(curr_deg_results["names"])
+    scores_df_vsrest = pd.DataFrame(curr_deg_results[SCORE_TYPE])
+
 
     pert_normalized_abs_scores_vsrest = {}
     for pert in tqdm(scores_df_vsrest.columns, desc="Calculating WMSE Weights"):
@@ -240,6 +261,7 @@ for i, quantile in tqdm(enumerate(quantiles)):
         pert_normalized_abs_scores_vsrest[pert] = weights
 
     pert_normalized_abs_scores_vsrest_quantiles[quantile_string] = pert_normalized_abs_scores_vsrest
+    # FIXME: Ensure weights add up to 1 for each perturbation in the final computation of the WMSE
     
 
 # Write to pickle
@@ -266,9 +288,9 @@ for i, n_cells in enumerate(DATASET_CELL_COUNTS):
         adatas_cells_per_pert.append(adata[pert_cells])
     adata_n_cells = sc.concat(adatas_cells_per_pert)
     # Get DEGs vs rest
-    sc.tl.rank_genes_groups(adata_n_cells, 'condition', method='t-test_overestim_var', reference='rest')
-    names_df_vsrest = pd.DataFrame(adata_n_cells.uns["rank_genes_groups"]["names"])
-    scores_df_vsrest = pd.DataFrame(adata_n_cells.uns["rank_genes_groups"][SCORE_TYPE])
+    curr_deg_results = compute_degs(adata_n_cells, mode='vsrest')
+    names_df_vsrest = pd.DataFrame(curr_deg_results["names"])
+    scores_df_vsrest = pd.DataFrame(curr_deg_results[SCORE_TYPE])
     
     # Get the weights for each perturbation
     pert_normalized_abs_scores_vsrest_cells_per_pert[n_cells] = {}
@@ -299,6 +321,7 @@ for i, n_cells in enumerate(DATASET_CELL_COUNTS):
         # Order by the var_names
         weights = weights.reindex(adata.var_names)
         pert_normalized_abs_scores_vsrest_cells_per_pert[n_cells][pert] = weights
+        # FIXME: Ensure weights add up to 1 for each perturbation in the final computation of the WMSE
 
 # Write to pickle
 with open(f'{data_cache_dir}/norman19_pert_normalized_abs_scores_vsrest_cells_per_pert.pkl', 'wb') as f:
