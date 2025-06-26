@@ -64,3 +64,5 @@ uv run plotting.py --dataset replogle22
 ```
 
 Figures/results are in `analyses/modeling_metrics/<dataset>/`.
+
+*Note:* GEARS training only with MSE is very unstable so repeated runs may show numerical differences. WMSE actually increases the stability of training results. 
