@@ -3,70 +3,60 @@
 import warnings
 warnings.filterwarnings('ignore')
 
-# # %%
-# import argparse
+# %%
+import argparse
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--dataset', type=str, default='norman19', choices=['norman19', 'replogle22'])
-# args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', type=str, default='norman19', choices=['norman19', 'replogle22'])
+args = parser.parse_args()
 
-# DATASET_NAME = args.dataset
+DATASET_NAME = args.dataset
 
 # %%
 import os
 
 
 # Configure dataset
-DATASET_NAME = 'norman19' 
+# DATASET_NAME = 'replogle22' 
 
 
 if DATASET_NAME == 'replogle22':
     if not os.path.exists('../../data/replogle22/replogle22_processed.h5ad'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/replogle22/replogle22_processed.h5ad ../../data/replogle22/replogle22_processed.h5ad')
+        raise FileNotFoundError('../../data/replogle22/replogle22_processed.h5ad')
 
     if not os.path.exists('../../data/replogle22/replogle22_names_df_vsrest.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/replogle22/replogle22_names_df_vsrest.pkl ../../data/replogle22/replogle22_names_df_vsrest.pkl')
+        raise FileNotFoundError('../../data/replogle22/replogle22_names_df_vsrest.pkl')
 
     if not os.path.exists('../../data/replogle22/replogle22_scores_df_vsrest.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/replogle22/replogle22_scores_df_vsrest.pkl ../../data/replogle22/replogle22_scores_df_vsrest.pkl')
+        raise FileNotFoundError('../../data/replogle22/replogle22_scores_df_vsrest.pkl')
 
-    if not os.path.exists('../../data/gears_predictions.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/gears_predictions.pkl ../../data/gears_predictions.pkl')
+    if not os.path.exists('../../data/replogle22/gears_predictions_default_loss_unweighted_replogle22.pkl'):
+        raise FileNotFoundError('../../data/replogle22/gears_predictions_default_loss_unweighted_replogle22.pkl')
 
+    if not os.path.exists('../../data/replogle22/gears_predictions_mse_unweighted_replogle22.pkl'):
+        raise FileNotFoundError('../../data/replogle22/gears_predictions_mse_unweighted_replogle22.pkl')
 
-    if not os.path.exists('../../data/gears_predictions_default_loss_unweighted.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_default_loss_unweighted.pkl ../../data/gears_predictions_default_loss_unweighted.pkl')
-
-    if not os.path.exists('../../data/gears_predictions_default_loss_weighted.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_default_loss_weighted.pkl ../../data/gears_predictions_default_loss_weighted.pkl')
-
-    if not os.path.exists('../../data/gears_predictions_mse_unweighted.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_mse_unweighted.pkl ../../data/gears_predictions_mse_unweighted.pkl')
-
-    if not os.path.exists('../../data/gears_predictions_mse_weighted.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_mse_weighted.pkl ../../data/gears_predictions_mse_weighted.pkl')
+    if not os.path.exists('../../data/replogle22/gears_predictions_mse_weighted_replogle22.pkl'):
+        raise FileNotFoundError('../../data/replogle22/gears_predictions_mse_weighted_replogle22.pkl')
 
 elif DATASET_NAME == 'norman19':
     if not os.path.exists('../../data/norman19/norman19_processed.h5ad'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/norman19/norman19_processed.h5ad ../../data/norman19/norman19_processed.h5ad')
+        raise FileNotFoundError('../../data/norman19/norman19_processed.h5ad')
 
     if not os.path.exists('../../data/norman19/norman19_names_df_vsrest.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/norman19/norman19_names_df_vsrest.pkl ../../data/norman19/norman19_names_df_vsrest.pkl')
+        raise FileNotFoundError('../../data/norman19/norman19_names_df_vsrest.pkl')
 
     if not os.path.exists('../../data/norman19/norman19_scores_df_vsrest.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/norman19/norman19_scores_df_vsrest.pkl ../../data/norman19/norman19_scores_df_vsrest.pkl')
+        raise FileNotFoundError('../../data/norman19/norman19_scores_df_vsrest.pkl')
 
-    if not os.path.exists('../../data/gears_predictions_default_loss_unweighted_norman19.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/gears_predictions_default_loss_unweighted_norman19.pkl ../../data/gears_predictions_default_loss_unweighted_norman19.pkl')
+    if not os.path.exists('../../data/norman19/gears_predictions_default_loss_unweighted_norman19.pkl'):
+        raise FileNotFoundError('../../data/norman19/gears_predictions_default_loss_unweighted_norman19.pkl')
 
-    if not os.path.exists('../../data/gears_predictions_default_loss_weighted_norman19.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/henry/icml_data/gears_predictions_default_loss_weighted_norman19.pkl ../../data/gears_predictions_default_loss_weighted_norman19.pkl')
-
-    if not os.path.exists('../../data/gears_predictions_mse_unweighted_norman19.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_mse_unweighted_norman19.pkl ../../data/gears_predictions_mse_unweighted_norman19.pkl')
+    if not os.path.exists('../../data/norman19/gears_predictions_mse_unweighted_norman19.pkl'):
+        raise FileNotFoundError('../../data/norman19/gears_predictions_mse_unweighted_norman19.pkl')
     
-    if not os.path.exists('../../data/gears_predictions_mse_weighted_norman19.pkl'):
-        os.system('aws s3 cp s3://shift-personal-dev/lucas/icml/weight_test/gears_predictions_mse_weighted_norman19.pkl ../../data/gears_predictions_mse_weighted_norman19.pkl')
+    if not os.path.exists('../../data/norman19/gears_predictions_mse_weighted_norman19.pkl'):
+        raise FileNotFoundError('../../data/norman19/gears_predictions_mse_weighted_norman19.pkl')
 
 
 # %%
@@ -110,7 +100,7 @@ import os
 from scipy.stats import ranksums # Added ranksums
 import scienceplots
 from statsmodels.nonparametric.smoothers_lowess import lowess
-
+np.random.seed(42)
 
 # DATASET_NAME is already defined at the top of the file
 
@@ -138,41 +128,36 @@ import pickle
 
 # Load predictions only for replogle22
 if DATASET_NAME == 'replogle22':
-    # Load the gears predictions
-    with open('../../data/gears_predictions.pkl', 'rb') as f:
-        gears_predictions = pickle.load(f)
 
-    with open('../../data/gears_predictions_default_loss_unweighted.pkl', 'rb') as f:
+    with open('../../data/replogle22/gears_predictions_default_loss_unweighted_replogle22.pkl', 'rb') as f:
         gears_predictions_default_loss_unweighted = pickle.load(f)
 
-    with open('../../data/gears_predictions_default_loss_weighted.pkl', 'rb') as f:
-        gears_predictions_default_loss_weighted = pickle.load(f)
-
-    with open('../../data/gears_predictions_mse_unweighted.pkl', 'rb') as f:
+    with open('../../data/replogle22/gears_predictions_mse_unweighted_replogle22.pkl', 'rb') as f:
         gears_predictions_mse_unweighted = pickle.load(f)
 
-    with open('../../data/gears_predictions_mse_weighted.pkl', 'rb') as f:
+    with open('../../data/replogle22/gears_predictions_mse_weighted_replogle22.pkl', 'rb') as f:
         gears_predictions_mse_weighted = pickle.load(f)
+
+    # Sub + for _ in all predictions
+    gears_predictions_default_loss_unweighted = {k.replace('_', '+'): v for k, v in gears_predictions_default_loss_unweighted.items()}
+    gears_predictions_mse_unweighted = {k.replace('_', '+'): v for k, v in gears_predictions_mse_unweighted.items()}
+    gears_predictions_mse_weighted = {k.replace('_', '+'): v for k, v in gears_predictions_mse_weighted.items()}
 
 
 else:
 
-    with open('../../data/gears_predictions_default_loss_unweighted_norman19.pkl', 'rb') as f:
-        gears_predictions = pickle.load(f)
+    with open('../../data/norman19/gears_predictions_default_loss_unweighted_norman19.pkl', 'rb') as f:
+        gears_predictions_default_loss_unweighted = pickle.load(f)
 
     # Load MSE weighted/unweighted predictions for norman19
-    with open('../../data/gears_predictions_mse_unweighted_norman19.pkl', 'rb') as f:
+    with open('../../data/norman19/gears_predictions_mse_unweighted_norman19.pkl', 'rb') as f:
         gears_predictions_mse_unweighted = pickle.load(f)
     
-    with open('../../data/gears_predictions_mse_weighted_norman19.pkl', 'rb') as f:
+    with open('../../data/norman19/gears_predictions_mse_weighted_norman19.pkl', 'rb') as f:
         gears_predictions_mse_weighted = pickle.load(f)
 
-    # Set empty dict for default loss predictions (not available for norman19)
-    gears_predictions_default_loss_unweighted = {}
-    gears_predictions_default_loss_weighted = {}
-
     # Sub + for _ in all predictions
-    gears_predictions = {k.replace('_', '+'): v for k, v in gears_predictions.items()}
+    gears_predictions_default_loss_unweighted = {k.replace('_', '+'): v for k, v in gears_predictions_default_loss_unweighted.items()}
     gears_predictions_mse_unweighted = {k.replace('_', '+'): v for k, v in gears_predictions_mse_unweighted.items()}
     gears_predictions_mse_weighted = {k.replace('_', '+'): v for k, v in gears_predictions_mse_weighted.items()}
 
@@ -199,7 +184,6 @@ total_mean_first_half = np.mean(list(pert_means_first_half.values()), axis=0)
 pert_means_second_half = get_pert_means(adata_second_half)
 total_mean_second_half = np.mean(list(pert_means_second_half.values()), axis=0)
 
-# %%
 # Create dictionaries to store the metrics for each perturbation
 pearson_delta_dict_predictive = {}
 pearson_delta_degs_dict_predictive = {}
@@ -207,16 +191,7 @@ mse_dict_predictive = {}
 wmse_dict_predictive = {}
 r2_delta_dict_predictive = {}
 wr2_delta_dict_predictive = {}
-
-
-# %%
-# Skip 'control' perturbation and focus only on actual perturbations
-if DATASET_NAME == 'replogle22':
-    # For replogle22, filter by GEARS predictions availability
-    all_perts_for_predictive = [pert for pert in adata.obs['condition'].unique() if pert != 'control' and pert in list(gears_predictions.keys())]
-else:
-    # For other datasets, use all non-control perturbations
-    all_perts_for_predictive = [pert for pert in adata.obs['condition'].unique() if pert != 'control' and pert in list(gears_predictions.keys())]
+all_perts_for_predictive = [pert for pert in adata.obs['condition'].unique() if pert != 'control' and pert in list(gears_predictions_default_loss_unweighted.keys())]
 
 MIN_DEGS_FOR_METRIC = 0
 
@@ -301,20 +276,10 @@ for pert in tqdm(all_perts_for_predictive, desc="Processing perturbations"):
                                               current_pert_weights, pert_degs_vsrest_idx)
     
     # GEARS (only if available)
-    if pert in gears_predictions:
-        gears_mean = gears_predictions.get(pert)
-        calculate_metrics_for_condition(gears_mean, second_half_mean, "gears", pert,
-                                      current_pert_weights, pert_degs_vsrest_idx)
-
     if pert in gears_predictions_default_loss_unweighted:
         gears_mean = gears_predictions_default_loss_unweighted.get(pert)
-        calculate_metrics_for_condition(gears_mean, second_half_mean, "gears_default_loss_unweighted", pert,
+        calculate_metrics_for_condition(gears_mean, second_half_mean, "gears", pert,
                                       current_pert_weights, pert_degs_vsrest_idx)
-
-    if pert in gears_predictions_default_loss_weighted:
-        gears_mean = gears_predictions_default_loss_weighted.get(pert)
-        calculate_metrics_for_condition(gears_mean, second_half_mean, "gears_default_loss_weighted", pert,
-                                        current_pert_weights, pert_degs_vsrest_idx)
 
     if pert in gears_predictions_mse_unweighted:
         gears_mean = gears_predictions_mse_unweighted.get(pert)
@@ -332,7 +297,7 @@ for pert in tqdm(all_perts_for_predictive, desc="Processing perturbations"):
 
 # %%
 # Create plots for the predictive baseline metrics
-PLOT_DIR = f'{ANALYSIS_DIR}/plots/'
+PLOT_DIR = f'{ANALYSIS_DIR}/{DATASET_NAME}/'
 os.makedirs(PLOT_DIR, exist_ok=True)
 
 # Process data for plotting
@@ -341,8 +306,6 @@ regular_keys = [key for key in mse_dict_predictive.keys() if '_control' not in k
 control_keys = [key for key in mse_dict_predictive.keys() if '_control' in key]
 datamean_keys = [key for key in mse_dict_predictive.keys() if '_datamean' in key]
 gears_keys = [key for key in mse_dict_predictive.keys() if '_gears' in key]
-gears_default_loss_unweighted_keys = [key for key in mse_dict_predictive.keys() if '_gears_default_loss_unweighted' in key]
-gears_default_loss_weighted_keys = [key for key in mse_dict_predictive.keys() if '_gears_default_loss_weighted' in key]
 gears_mse_unweighted_keys = [key for key in mse_dict_predictive.keys() if '_gears_mse_unweighted' in key]
 gears_mse_weighted_keys = [key for key in mse_dict_predictive.keys() if '_gears_mse_weighted' in key]
 
@@ -370,8 +333,6 @@ conditions_config = [
 if DATASET_NAME == 'replogle22':
     conditions_config.extend([
         ('_gears', 'GEARS'),
-        ('_gears_default_loss_unweighted', 'GEARS\n(Default, Unweighted)'),
-        ('_gears_default_loss_weighted', 'GEARS\n(Default, Weighted)'),
         ('_gears_mse_unweighted', 'GEARS\n(MSE Loss)'),
         ('_gears_mse_weighted', 'GEARS\n(WMSE Loss)')
     ])
@@ -599,13 +560,16 @@ if DATASET_NAME == 'replogle22':
     plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta', r'Pearson($\Delta$) ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) (unseen genes)', PLOT_DIR, DATASET_NAME, 'basic')
     plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta DEGs', r'Pearson($\Delta$) DEGs ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) DEGs (unseen genes)', PLOT_DIR, DATASET_NAME, 'basic')
 else:
+    df_for_plotting_basic = df_for_plotting[df_for_plotting['Condition'].isin([
+        'Tech Duplicate', '$\mu^c$\n(ctrl mean)', '$\mu^{all}$\n(perts mean)', 'GEARS'
+    ])].copy()
     # For other datasets, use the original plotting
-    plot_predictive_conditions_boxplot(df_for_plotting, 'MSE', 'MSE (vs Second Half)', 'MSE (vs Second Half)', PLOT_DIR, DATASET_NAME)
-    plot_predictive_conditions_boxplot(df_for_plotting, 'WMSE', 'WMSE (vs Second Half)', 'WMSE (vs Second Half)', PLOT_DIR, DATASET_NAME)
-    plot_predictive_conditions_boxplot(df_for_plotting, 'R-Squared Delta', r'$R^2(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2(\Delta)$ (vs Second Half)', PLOT_DIR, DATASET_NAME)
-    plot_predictive_conditions_boxplot(df_for_plotting, 'Weighted R-Squared Delta', r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2_w(\Delta)$ (vs Second Half)', PLOT_DIR, DATASET_NAME)
-    plot_predictive_conditions_boxplot(df_for_plotting, 'Pearson Delta', r'Pearson($\Delta$) ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) (vs Second Half)', PLOT_DIR, DATASET_NAME)
-    plot_predictive_conditions_boxplot(df_for_plotting, 'Pearson Delta DEGs', r'Pearson($\Delta$) DEGs ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) DEGs (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'MSE', 'MSE (vs Second Half)', 'MSE (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'WMSE', 'WMSE (vs Second Half)', 'WMSE (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'R-Squared Delta', r'$R^2(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2(\Delta)$ (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Weighted R-Squared Delta', r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2_w(\Delta)$ (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta', r'Pearson($\Delta$) ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) (vs Second Half)', PLOT_DIR, DATASET_NAME)
+    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta DEGs', r'Pearson($\Delta$) DEGs ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) DEGs (vs Second Half)', PLOT_DIR, DATASET_NAME)
 
 # %%
 
@@ -789,19 +753,7 @@ if DATASET_NAME == 'replogle22':
 
 # For norman19, create comparison plots for MSE weighted vs unweighted
 elif DATASET_NAME == 'norman19':
-    # Create two sets of plots for norman19
-    # First set: Only Tech Duplicate, $\mu^c$, $\mu^{all}$, Additive, and GEARS
-    df_for_plotting_basic = df_for_plotting[df_for_plotting['Condition'].isin([
-        'Tech Duplicate', '$\mu^c$\n(ctrl mean)', '$\mu^{all}$\n(perts mean)', 'GEARS'
-    ])].copy()
-    
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'MSE', 'MSE (vs Second Half)', 'MSE (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'WMSE', 'WMSE (vs Second Half)', 'WMSE (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'R-Squared Delta', r'$R^2(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2(\Delta)$ (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Weighted R-Squared Delta', r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', r'$R^2_w(\Delta)$ (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta', r'Pearson($\Delta$) ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    plot_predictive_conditions_boxplot(df_for_plotting_basic, 'Pearson Delta DEGs', r'Pearson($\Delta$) DEGs ($\mu^{all}$ as $\Delta_{ctrl}$)', r'Pearson($\Delta$) DEGs (unseen combos)', PLOT_DIR, DATASET_NAME, 'basic')
-    
+
     # Second set: Tech Duplicate, $\mu^c$, $\mu^{all}$, Additive, GEARS (MSE Loss), and GEARS (WMSE Loss)
     df_for_plotting_mse = df_for_plotting[df_for_plotting['Condition'].isin([
         'Tech Duplicate', '$\mu^c$\n(ctrl mean)', '$\mu^{all}$\n(perts mean)', 'Additive',
@@ -842,7 +794,7 @@ expression_matrices['GEARS (MSE Loss)'] = []
 expression_matrices['GEARS (WMSE Loss)'] = []
 
 # Collect data for perturbations that have GEARS predictions
-perts_for_variance = [p for p in all_perts_for_predictive if p in gears_predictions]
+perts_for_variance = [p for p in all_perts_for_predictive if p in gears_predictions_default_loss_unweighted]
 
 for pert in tqdm(perts_for_variance, desc="Collecting expression data"):
     # Ground truth (second half)
@@ -1097,9 +1049,6 @@ for loss_type, unweighted_suffix, weighted_suffix in comparison_pairs:
 
 
 # %%
-# Continue with GEARS-specific analyses for both replogle22 and norman19
-
-# %%
 # Find the perturbation which has the highest pearson delta DEGs in GEARS predictions
 # Find the perturbation which has the highest pearson delta DEGs in GEARS predictions
 gears_pearson_delta_degs = {pert.replace('_gears', ''): value 
@@ -1121,7 +1070,7 @@ if gears_pearson_delta_degs:
     selected_pert = max_pert_gears.split('_')[0]
     
     # Get GEARS prediction
-    gears_pred = gears_predictions[selected_pert]
+    gears_pred = gears_predictions_default_loss_unweighted[selected_pert]
     
     # Get ground truth (second half mean)
     ground_truth = adata_second_half[adata_second_half.obs['condition'] == selected_pert].X.mean(axis=0).A1
@@ -1390,7 +1339,7 @@ for quantile_idx, quantile_label in enumerate(quantile_labels):
         
         # GEARS
         gears_key = f"{pert}_gears"
-        gears_mean = gears_predictions.get(pert)
+        gears_mean = gears_predictions_default_loss_unweighted.get(pert)
         if pert_degs_vsrest_idx.sum() > 0 and gears_mean is not None:
             wmse_dict_quantile[gears_key] = wmse(gears_mean, second_half_mean, current_pert_weights)
             delta_gears = gears_mean - total_mean_first_half
@@ -1692,12 +1641,6 @@ def plot_deg_quantile_impact(df, metric_name, y_label, plot_title, plot_dir, dat
     plt.show()
     plt.close()
 
-# %%
-
-plot_deg_quantile_impact(df_quantile_results, 'Weighted R-Squared Delta', 
-                         r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', 
-                         r'$R^2_w(\Delta)$', PLOT_DIR, DATASET_NAME)
-
 
 # %%
 # Create the grouped boxplots for each metric affected by DEG quantiles
@@ -1715,9 +1658,3 @@ plot_deg_quantile_impact(df_quantile_results, 'Weighted R-Squared Delta',
                          r'$R^2_w(\Delta)$ ($\mu^{all}$ as $\Delta_{ctrl}$)', 
                          r'$R^2_w(\Delta)$', PLOT_DIR, DATASET_NAME)
 
-
-
-
-
-
-# %%

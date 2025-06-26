@@ -17,15 +17,8 @@ from tqdm import tqdm
 import os
 import argparse
 import matplotlib.colors as colors
-from scipy.stats import gaussian_kde, ttest_ind, ranksums # Added ranksums
-from sklearn.metrics import r2_score # Import r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.neural_network import MLPRegressor
-from scipy.sparse import csr_matrix
+from scipy.stats import gaussian_kde
 from scipy.stats import pearsonr
-from typing import Optional # Added for Optional type hint
 import pickle
 import sys
 sys.path.append(os.path.dirname(os.getcwd())) # For finding the 'analyses' package
@@ -62,414 +55,414 @@ SCORE_TYPE = 'scores' # or 'logfoldchanges'
 names_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_names_df_vsctrl.pkl')
 scores_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_scores_df_vsctrl.pkl')
 
-# #### 1. n_p: Cells per perturbation. Downsample data to get a range of cells per perturbation and then calculate the metrics for each.
+#### 1. n_p: Cells per perturbation. Downsample data to get a range of cells per perturbation and then calculate the metrics for each.
 
-# # Get the selected cells and precalculated weights
-# import pickle
-# with open(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells.pkl', 'rb') as f:
-#     pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells = pickle.load(f)
-# with open(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_pert_normalized_abs_scores_vsrest_cells_per_pert.pkl', 'rb') as f:
-#     pert_normalized_abs_scores_vsrest_cells_per_pert = pickle.load(f)
+# Get the selected cells and precalculated weights
+import pickle
+with open(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells.pkl', 'rb') as f:
+    pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells = pickle.load(f)
+with open(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_pert_normalized_abs_scores_vsrest_cells_per_pert.pkl', 'rb') as f:
+    pert_normalized_abs_scores_vsrest_cells_per_pert = pickle.load(f)
 
-# # Get the perts with at least N cells
-# max_cells_per_pert = max(DATASET_CELL_COUNTS)
-# pert_counts = adata.obs['condition'].value_counts()
-# pert_counts = pert_counts[(pert_counts >= max_cells_per_pert) & (pert_counts.index != 'control')]
+# Get the perts with at least N cells
+max_cells_per_pert = max(DATASET_CELL_COUNTS)
+pert_counts = adata.obs['condition'].value_counts()
+pert_counts = pert_counts[(pert_counts >= max_cells_per_pert) & (pert_counts.index != 'control')]
 
-# cell_counts = DATASET_CELL_COUNTS
+cell_counts = DATASET_CELL_COUNTS
 
-# # Define metric names
-# metric_names = ['corr_delta', 'mae', 'mse']
+# Define metric names
+metric_names = ['corr_delta', 'mae', 'mse']
 
-# # Initialize all metric dictionaries in a structured way
-# all_metric_dicts = {}
-# for name in metric_names:
-#     all_metric_dicts[f'{name}_dict'] = {}
+# Initialize all metric dictionaries in a structured way
+all_metric_dicts = {}
+for name in metric_names:
+    all_metric_dicts[f'{name}_dict'] = {}
 
-# # Get the total mean for each number of cells per perturbation
-# total_mean_per_pert_cellcount = {}
-# for cell_count in tqdm(cell_counts):
-#     adata_n_cells = adata[pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells[cell_count]]
-#     total_mean_per_pert_cellcount[cell_count] = {}
-#     for pert in pert_counts.index:
-#         pert_mean = adata_n_cells[adata_n_cells.obs['condition'] == pert].X.mean(axis=0).A1
-#         total_mean_per_pert_cellcount[cell_count][pert] = pert_mean
-#     # Get the mean of the total means
-#     total_mean_per_pert_cellcount[cell_count]['total_mean'] = np.mean(list(total_mean_per_pert_cellcount[cell_count].values()), axis=0)
+# Get the total mean for each number of cells per perturbation
+total_mean_per_pert_cellcount = {}
+for cell_count in tqdm(cell_counts):
+    adata_n_cells = adata[pert_normalized_abs_scores_vsrest_cells_per_pert_selectedcells[cell_count]]
+    total_mean_per_pert_cellcount[cell_count] = {}
+    for pert in pert_counts.index:
+        pert_mean = adata_n_cells[adata_n_cells.obs['condition'] == pert].X.mean(axis=0).A1
+        total_mean_per_pert_cellcount[cell_count][pert] = pert_mean
+    # Get the mean of the total means
+    total_mean_per_pert_cellcount[cell_count]['total_mean'] = np.mean(list(total_mean_per_pert_cellcount[cell_count].values()), axis=0)
 
-# for pert in tqdm(pert_counts.index):
-#     pert_cells = adata.obs[adata.obs['condition'] == pert].index.tolist()
-#     # Initialize per-perturbation dictionaries
-#     for dict_key_init in all_metric_dicts:
-#         all_metric_dicts[dict_key_init][pert] = {}
+for pert in tqdm(pert_counts.index):
+    pert_cells = adata.obs[adata.obs['condition'] == pert].index.tolist()
+    # Initialize per-perturbation dictionaries
+    for dict_key_init in all_metric_dicts:
+        all_metric_dicts[dict_key_init][pert] = {}
 
-#     for cell_count in cell_counts:
-#         pert_mean = total_mean_per_pert_cellcount[cell_count][pert]
-#         total_mean = total_mean_per_pert_cellcount[cell_count]['total_mean']
+    for cell_count in cell_counts:
+        pert_mean = total_mean_per_pert_cellcount[cell_count][pert]
+        total_mean = total_mean_per_pert_cellcount[cell_count]['total_mean']
         
-#         delta_all_vs_control = total_mean - ctrl_mean_original
-#         delta_pert_vs_control = pert_mean - ctrl_mean_original
+        delta_all_vs_control = total_mean - ctrl_mean_original
+        delta_pert_vs_control = pert_mean - ctrl_mean_original
 
-#         # Gene index is always all genes now
-#         gene_idx = slice(None)
+        # Gene index is always all genes now
+        gene_idx = slice(None)
 
-#         # Apply slicing for the current variant (all genes, DEGs vs ctrl, or DEGs vs rest)
-#         pert_mean_s = pert_mean[gene_idx]
-#         total_mean_s = total_mean[gene_idx]
-#         delta_pert_vs_control_s = delta_pert_vs_control[gene_idx]
-#         delta_all_vs_control_s = delta_all_vs_control[gene_idx]
+        # Apply slicing for the current variant (all genes, DEGs vs ctrl, or DEGs vs rest)
+        pert_mean_s = pert_mean[gene_idx]
+        total_mean_s = total_mean[gene_idx]
+        delta_pert_vs_control_s = delta_pert_vs_control[gene_idx]
+        delta_all_vs_control_s = delta_all_vs_control[gene_idx]
 
-#             # Metrics
-#         all_metric_dicts['mae_dict'][pert][cell_count] = mae(pert_mean_s, total_mean_s)
-#         all_metric_dicts['mse_dict'][pert][cell_count] = mse(pert_mean_s, total_mean_s)
-#         all_metric_dicts['corr_delta_dict'][pert][cell_count] = pearson(delta_all_vs_control_s, delta_pert_vs_control_s)
-
-
-# # Plot metrics
-# PLOT_DIR = f'{ANALYSIS_DIR}/np_effect_of_pert_cell_number'
-
-# metrics_to_plot = [
-#     {'name': 'mae', 'title_name': 'MAE', 'ylabel': 'MAE($\mu_p$,$\mu_{all}$)'},
-#     {'name': 'mse', 'title_name': 'MSE', 'ylabel': 'MSE($\mu_p$,$\mu_{all}$)'},
-#     {'name': 'corr_delta', 'title_name': 'Pearson($\Delta$)', 'ylabel': 'Pearson($\Delta_{pert}$,$\Delta_{all}$)'},
-# ]
-
-# np_aggregate_vals = {}
-# for metric_info in metrics_to_plot:
-#     metric_dict_key = f"{metric_info['name']}_dict"
-#     # Ensure the dictionary key exists and the dictionary is not empty before plotting
-#     if metric_dict_key in all_metric_dicts and all_metric_dicts[metric_dict_key]:
-#         title = f"{metric_info['title_name']} by $n_p$"
-#         np_aggregate_vals[metric_dict_key] = get_aggregate_correlation_from_dict(all_metric_dicts[metric_dict_key], log_x=True, log_x_base=2)
-
-#         plot_metrics_as_scatter_trend(
-#             all_metric_dicts[metric_dict_key],
-#             PLOT_DIR,
-#             title,
-#             DATASET_NAME,
-#             use_log_x=True,
-#             log_x_base=2,
-#             xlabel='$n_p$ (# cells per perturbation)',
-#             ylabel=metric_info['ylabel']
-#         )
-
-# # Save the aggregate values to pickle in the ANALYSIS_DIR
-# with open(f'{ANALYSIS_DIR}/np_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(np_aggregate_vals, f)
+            # Metrics
+        all_metric_dicts['mae_dict'][pert][cell_count] = mae(pert_mean_s, total_mean_s)
+        all_metric_dicts['mse_dict'][pert][cell_count] = mse(pert_mean_s, total_mean_s)
+        all_metric_dicts['corr_delta_dict'][pert][cell_count] = pearson(delta_all_vs_control_s, delta_pert_vs_control_s)
 
 
-# #### 2. n_0: Control cells number. Downsample the control cells to get a distribution of numbers of cells and then calculate the metrics for each.
-# cell_counts_n0 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192] 
-# ctrl_cells = adata.obs[adata.obs['condition'] == 'control'].index.tolist()
+# Plot metrics
+PLOT_DIR = f'{ANALYSIS_DIR}/np_effect_of_pert_cell_number'
 
-# # Initialize a new dictionary for n0 simulation results
-# n0_all_metric_dicts = {}
-# metric_names_for_n0 = ['corr_delta'] 
+metrics_to_plot = [
+    {'name': 'mae', 'title_name': 'MAE', 'ylabel': 'MAE($\mu_p$,$\mu_{all}$)'},
+    {'name': 'mse', 'title_name': 'MSE', 'ylabel': 'MSE($\mu_p$,$\mu_{all}$)'},
+    {'name': 'corr_delta', 'title_name': 'Pearson($\Delta$)', 'ylabel': 'Pearson($\Delta_{pert}$,$\Delta_{all}$)'},
+]
 
-# for name in metric_names_for_n0:
-#     n0_all_metric_dicts[f'{name}_dict'] = {}
+np_aggregate_vals = {}
+for metric_info in metrics_to_plot:
+    metric_dict_key = f"{metric_info['name']}_dict"
+    # Ensure the dictionary key exists and the dictionary is not empty before plotting
+    if metric_dict_key in all_metric_dicts and all_metric_dicts[metric_dict_key]:
+        title = f"{metric_info['title_name']} by $n_p$"
+        np_aggregate_vals[metric_dict_key] = get_aggregate_correlation_from_dict(all_metric_dicts[metric_dict_key], log_x=True, log_x_base=2)
 
-# for cell_count_val in tqdm(cell_counts_n0):
-#     num_to_sample = min(cell_count_val, len(ctrl_cells))
-#     if num_to_sample == 0:
-#         if len(ctrl_cells) == 0:
-#              ctrl_mean_ds = np.zeros_like(total_mean_original) # Match shape of total_mean_original
-#         else: # num_to_sample must be > 0 if len(ctrl_cells) > 0
-#              sampled_control_cells = np.random.choice(ctrl_cells, size=num_to_sample, replace=False)
-#              ctrl_mean_ds = adata[sampled_control_cells].X.mean(axis=0).A1
-#     else: # num_to_sample > 0
-#         sampled_control_cells = np.random.choice(ctrl_cells, size=num_to_sample, replace=False)
-#         ctrl_mean_ds = adata[sampled_control_cells].X.mean(axis=0).A1
+        plot_metrics_as_scatter_trend(
+            all_metric_dicts[metric_dict_key],
+            PLOT_DIR,
+            title,
+            DATASET_NAME,
+            use_log_x=True,
+            log_x_base=2,
+            xlabel='$n_p$ (# cells per perturbation)',
+            ylabel=metric_info['ylabel']
+        )
+
+# Save the aggregate values to pickle in the ANALYSIS_DIR
+with open(f'{ANALYSIS_DIR}/np_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(np_aggregate_vals, f)
 
 
-#     for pert in pert_counts.index:
-#         pert_mean = pert_means[pert] # Full mean for the specific perturbation
+#### 2. n_0: Control cells number. Downsample the control cells to get a distribution of numbers of cells and then calculate the metrics for each.
+cell_counts_n0 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192] 
+ctrl_cells = adata.obs[adata.obs['condition'] == 'control'].index.tolist()
 
-#         # Initialize per-perturbation sub-dictionaries if not already present
-#         for metric_key_base in metric_names_for_n0:
-#             dict_key = f'{metric_key_base}_dict'
-#             if pert not in n0_all_metric_dicts[dict_key]:
-#                 n0_all_metric_dicts[dict_key][pert] = {}
+# Initialize a new dictionary for n0 simulation results
+n0_all_metric_dicts = {}
+metric_names_for_n0 = ['corr_delta'] 
+
+for name in metric_names_for_n0:
+    n0_all_metric_dicts[f'{name}_dict'] = {}
+
+for cell_count_val in tqdm(cell_counts_n0):
+    num_to_sample = min(cell_count_val, len(ctrl_cells))
+    if num_to_sample == 0:
+        if len(ctrl_cells) == 0:
+             ctrl_mean_ds = np.zeros_like(total_mean_original) # Match shape of total_mean_original
+        else: # num_to_sample must be > 0 if len(ctrl_cells) > 0
+             sampled_control_cells = np.random.choice(ctrl_cells, size=num_to_sample, replace=False)
+             ctrl_mean_ds = adata[sampled_control_cells].X.mean(axis=0).A1
+    else: # num_to_sample > 0
+        sampled_control_cells = np.random.choice(ctrl_cells, size=num_to_sample, replace=False)
+        ctrl_mean_ds = adata[sampled_control_cells].X.mean(axis=0).A1
+
+
+    for pert in pert_counts.index:
+        pert_mean = pert_means[pert] # Full mean for the specific perturbation
+
+        # Initialize per-perturbation sub-dictionaries if not already present
+        for metric_key_base in metric_names_for_n0:
+            dict_key = f'{metric_key_base}_dict'
+            if pert not in n0_all_metric_dicts[dict_key]:
+                n0_all_metric_dicts[dict_key][pert] = {}
         
-#         delta_pert_vs_control_ds = pert_mean - ctrl_mean_ds
-#         delta_total_original_vs_control_ds = total_mean_original - ctrl_mean_ds 
+        delta_pert_vs_control_ds = pert_mean - ctrl_mean_ds
+        delta_total_original_vs_control_ds = total_mean_original - ctrl_mean_ds 
 
-#         # Gene index is always all genes now
-#         gene_idx = slice(None)
+        # Gene index is always all genes now
+        gene_idx = slice(None)
 
-#         delta_total_original_vs_control_ds_s = delta_total_original_vs_control_ds[gene_idx]
-#         delta_pert_vs_control_ds_s = delta_pert_vs_control_ds[gene_idx]
+        delta_total_original_vs_control_ds_s = delta_total_original_vs_control_ds[gene_idx]
+        delta_pert_vs_control_ds_s = delta_pert_vs_control_ds[gene_idx]
         
-#         current_metric_dict_key = 'corr_delta_dict' # Only one metric type now
-#         n0_all_metric_dicts[current_metric_dict_key][pert][cell_count_val] = pearson(
-#             delta_total_original_vs_control_ds_s, delta_pert_vs_control_ds_s
-#         )
+        current_metric_dict_key = 'corr_delta_dict' # Only one metric type now
+        n0_all_metric_dicts[current_metric_dict_key][pert][cell_count_val] = pearson(
+            delta_total_original_vs_control_ds_s, delta_pert_vs_control_ds_s
+        )
 
-# PLOT_DIR_N0 = f'{ANALYSIS_DIR}/n_0_effect_of_control_cell_number' # As per user's new code
+PLOT_DIR_N0 = f'{ANALYSIS_DIR}/n_0_effect_of_control_cell_number' # As per user's new code
 
-# n0_plot_configs = [
-#     {'name': 'corr_delta', 'title_name': 'Pearson($\Delta$)', 'ylabel': 'Pearson($\Delta_{pert}$,$\Delta_{all}$)'},
-# ]
+n0_plot_configs = [
+    {'name': 'corr_delta', 'title_name': 'Pearson($\Delta$)', 'ylabel': 'Pearson($\Delta_{pert}$,$\Delta_{all}$)'},
+]
 
-# n0_aggregate_vals= {}
-# for metric_info in n0_plot_configs:
-#     metric_dict_key = f"{metric_info['name']}_dict"
-#     # Ensure the dictionary key exists and the dictionary is not empty before plotting
-#     if metric_dict_key in n0_all_metric_dicts and n0_all_metric_dicts[metric_dict_key]:
-#         title = f"{metric_info['title_name']} by $n_0$"
-#         n0_aggregate_vals[metric_dict_key] = get_aggregate_correlation_from_dict(
-#             n0_all_metric_dicts[metric_dict_key], log_x=True, log_x_base=2
-#         )
+n0_aggregate_vals= {}
+for metric_info in n0_plot_configs:
+    metric_dict_key = f"{metric_info['name']}_dict"
+    # Ensure the dictionary key exists and the dictionary is not empty before plotting
+    if metric_dict_key in n0_all_metric_dicts and n0_all_metric_dicts[metric_dict_key]:
+        title = f"{metric_info['title_name']} by $n_0$"
+        n0_aggregate_vals[metric_dict_key] = get_aggregate_correlation_from_dict(
+            n0_all_metric_dicts[metric_dict_key], log_x=True, log_x_base=2
+        )
         
-#         plot_metrics_as_scatter_trend(
-#             n0_all_metric_dicts[metric_dict_key],
-#             PLOT_DIR_N0,
-#             title,
-#             DATASET_NAME,
-#             use_log_x=True,
-#             log_x_base=2,
-#             xlabel='$n_0$ (# control cells)', 
-#             ylabel=metric_info['ylabel']
-#         )
+        plot_metrics_as_scatter_trend(
+            n0_all_metric_dicts[metric_dict_key],
+            PLOT_DIR_N0,
+            title,
+            DATASET_NAME,
+            use_log_x=True,
+            log_x_base=2,
+            xlabel='$n_0$ (# control cells)', 
+            ylabel=metric_info['ylabel']
+        )
 
-# with open(f'{ANALYSIS_DIR}/n0_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(n0_aggregate_vals, f)
+with open(f'{ANALYSIS_DIR}/n0_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(n0_aggregate_vals, f)
 
 
 
-# #### 3. k: Number of perturbations
+#### 3. k: Number of perturbations
 
-# # Define 10 random seeds for this step
-# random_seeds_step3 = range(10)
-# perts_to_sweep = DATASET_PERTS_TO_SWEEP # Original sweep range
+# Define 10 random seeds for this step
+random_seeds_step3 = range(10)
+perts_to_sweep = DATASET_PERTS_TO_SWEEP # Original sweep range
 
-# # Lists to store metrics from all seeds
-# collected_metrics_p_all = []
-# collected_metrics_p_vsrest = []
+# Lists to store metrics from all seeds
+collected_metrics_p_all = []
+collected_metrics_p_vsrest = []
 
-# # Outer loop for seeds
-# for seed_val in tqdm(random_seeds_step3, desc="Step 3 Seeds"):
-#     np.random.seed(seed_val) # Set seed for this iteration
+# Outer loop for seeds
+for seed_val in tqdm(random_seeds_step3, desc="Step 3 Seeds"):
+    np.random.seed(seed_val) # Set seed for this iteration
 
-#     # Inner loop for number of perturbations
-#     for n_perts in tqdm(perts_to_sweep, desc=f"  N Perts (Seed {seed_val})", leave=False):
-#         # Ensure we don't try to sample more perts than available
-#         if n_perts > len(pert_counts.index):
-#             print(f"Warning: n_perts ({n_perts}) > available perts ({len(pert_counts.index)}). Skipping for seed {seed_val}, n_perts {n_perts}.")
-#             continue
+    # Inner loop for number of perturbations
+    for n_perts in tqdm(perts_to_sweep, desc=f"  N Perts (Seed {seed_val})", leave=False):
+        # Ensure we don't try to sample more perts than available
+        if n_perts > len(pert_counts.index):
+            print(f"Warning: n_perts ({n_perts}) > available perts ({len(pert_counts.index)}). Skipping for seed {seed_val}, n_perts {n_perts}.")
+            continue
             
-#         # Randomly sample n_perts from the eligible perturbations (pert_counts.index)
-#         sampled_perts_in_iteration = np.random.choice(pert_counts.index, size=n_perts, replace=False)
+        # Randomly sample n_perts from the eligible perturbations (pert_counts.index)
+        sampled_perts_in_iteration = np.random.choice(pert_counts.index, size=n_perts, replace=False)
         
-#         # Get the total mean expression vector using all cells from ONLY the sampled_perts_in_iteration
-#         total_mean_for_n_perts_sample = adata[adata.obs['condition'].isin(sampled_perts_in_iteration)].X.mean(axis=0).A1
-#         # Calculate the delta of this sampled total mean vs the original control mean
-#         delta_all_vs_control_for_n_perts_sample = total_mean_for_n_perts_sample - ctrl_mean_original
+        # Get the total mean expression vector using all cells from ONLY the sampled_perts_in_iteration
+        total_mean_for_n_perts_sample = adata[adata.obs['condition'].isin(sampled_perts_in_iteration)].X.mean(axis=0).A1
+        # Calculate the delta of this sampled total mean vs the original control mean
+        delta_all_vs_control_for_n_perts_sample = total_mean_for_n_perts_sample - ctrl_mean_original
 
-#         # For each specific perturbation (pert_j) WITHIN the current sample of n_perts:
-#         for pert_j in sampled_perts_in_iteration:
-#             # Get the pre-calculated mean expression for this specific pert_j (using all its cells)
-#             pert_j_mean = pert_means[pert_j] 
-#             # Calculate the delta of this specific pert_j's mean vs the original control mean
-#             delta_pert_j_vs_control = pert_j_mean - ctrl_mean_original
+        # For each specific perturbation (pert_j) WITHIN the current sample of n_perts:
+        for pert_j in sampled_perts_in_iteration:
+            # Get the pre-calculated mean expression for this specific pert_j (using all its cells)
+            pert_j_mean = pert_means[pert_j] 
+            # Calculate the delta of this specific pert_j's mean vs the original control mean
+            delta_pert_j_vs_control = pert_j_mean - ctrl_mean_original
             
-#             # Metric 1: Original (vs. ctrl_mean_original)
-#             pearson_val_all_vs_ctrl = pearson(delta_all_vs_control_for_n_perts_sample, delta_pert_j_vs_control)
-#             collected_metrics_p_all.append({
-#                 'seed': seed_val,
-#                 'n_perts': n_perts,
-#                 'pert': pert_j, 
-#                 'metric_value': pearson_val_all_vs_ctrl 
-#             })
+            # Metric 1: Original (vs. ctrl_mean_original)
+            pearson_val_all_vs_ctrl = pearson(delta_all_vs_control_for_n_perts_sample, delta_pert_j_vs_control)
+            collected_metrics_p_all.append({
+                'seed': seed_val,
+                'n_perts': n_perts,
+                'pert': pert_j, 
+                'metric_value': pearson_val_all_vs_ctrl 
+            })
 
-#             # DEG-specific metrics for pert_j
-#             pert_degs_vsctrl_list = list(set(adata.uns['deg_dict_vscontrol'][pert_j]['up']) | set(adata.uns['deg_dict_vscontrol'][pert_j]['down']))
-#             pert_degs_vsctrl_idx = adata.var_names.isin(pert_degs_vsctrl_list)
-#             pert_degs_vsrest_list = list(set(adata.uns['deg_dict_vsrest'][pert_j]['up']) | set(adata.uns['deg_dict_vsrest'][pert_j]['down']))
-#             pert_degs_vsrest_idx = adata.var_names.isin(pert_degs_vsrest_list)
+            # DEG-specific metrics for pert_j
+            pert_degs_vsctrl_list = list(set(adata.uns['deg_dict_vscontrol'][pert_j]['up']) | set(adata.uns['deg_dict_vscontrol'][pert_j]['down']))
+            pert_degs_vsctrl_idx = adata.var_names.isin(pert_degs_vsctrl_list)
+            pert_degs_vsrest_list = list(set(adata.uns['deg_dict_vsrest'][pert_j]['up']) | set(adata.uns['deg_dict_vsrest'][pert_j]['down']))
+            pert_degs_vsrest_idx = adata.var_names.isin(pert_degs_vsrest_list)
 
-#             val_vsrest_orig = pearson(delta_all_vs_control_for_n_perts_sample[pert_degs_vsrest_idx], delta_pert_j_vs_control[pert_degs_vsrest_idx])
-#             collected_metrics_p_vsrest.append({'seed': seed_val, 'n_perts': n_perts, 'pert': pert_j, 'metric_value': val_vsrest_orig})
+            val_vsrest_orig = pearson(delta_all_vs_control_for_n_perts_sample[pert_degs_vsrest_idx], delta_pert_j_vs_control[pert_degs_vsrest_idx])
+            collected_metrics_p_vsrest.append({'seed': seed_val, 'n_perts': n_perts, 'pert': pert_j, 'metric_value': val_vsrest_orig})
 
 
-# # Convert lists of dictionaries to DataFrames
-# df_p_all = pd.DataFrame(collected_metrics_p_all)
-# df_p_vsrest = pd.DataFrame(collected_metrics_p_vsrest)
+# Convert lists of dictionaries to DataFrames
+df_p_all = pd.DataFrame(collected_metrics_p_all)
+df_p_vsrest = pd.DataFrame(collected_metrics_p_vsrest)
 
-# # Get the aggregate values for the metrics
-# df_p_all['n_perts_log2'] = np.log2(df_p_all['n_perts'])
-# P_aggregate_vals = {'corr_delta_dict': pearsonr(df_p_all['n_perts_log2'], df_p_all['metric_value'])[0]}
+# Get the aggregate values for the metrics
+df_p_all['n_perts_log2'] = np.log2(df_p_all['n_perts'])
+P_aggregate_vals = {'corr_delta_dict': pearsonr(df_p_all['n_perts_log2'], df_p_all['metric_value'])[0]}
 
-# # Define plot directory for this step
-# PLOT_DIR_STEP3 = f'{ANALYSIS_DIR}/k_effect_of_n_perts'
-# os.makedirs(PLOT_DIR_STEP3, exist_ok=True) # Ensure directory exists
+# Define plot directory for this step
+PLOT_DIR_STEP3 = f'{ANALYSIS_DIR}/k_effect_of_n_perts'
+os.makedirs(PLOT_DIR_STEP3, exist_ok=True) # Ensure directory exists
 
-# # # Call the new multi-seed plotting function for each metric type
-# # plot_n_perts_categorical_scatter_multiseed(
-# #     df_p_all, 
-# #     PLOT_DIR_STEP3, 
-# #     'Pearson delta by # perts (in all perts vs other perts)', 
-# #     DATASET_NAME, 
-# #     xlabel='# Perturbations', 
-# #     ylabel='Pearson R'
-# # )
+# # Call the new multi-seed plotting function for each metric type
 # plot_n_perts_categorical_scatter_multiseed(
-#     df_p_vsrest, 
+#     df_p_all, 
 #     PLOT_DIR_STEP3, 
-#     'Pearson($\Delta$) by $k$ (in DEGs vs other perts)', 
+#     'Pearson delta by # perts (in all perts vs other perts)', 
 #     DATASET_NAME, 
-#     xlabel='$k$ (# of Perturbations)', 
-#     ylabel='Pearson($\Delta^{all}$,$\Delta^p$)'
+#     xlabel='# Perturbations', 
+#     ylabel='Pearson R'
 # )
+plot_n_perts_categorical_scatter_multiseed(
+    df_p_vsrest, 
+    PLOT_DIR_STEP3, 
+    'Pearson($\Delta$) by $k$ (in DEGs vs other perts)', 
+    DATASET_NAME, 
+    xlabel='$k$ (# of Perturbations)', 
+    ylabel='Pearson($\Delta^{all}$,$\Delta^p$)'
+)
 
 
-# # Reset to the original random seed state after Step 3
-# np.random.set_state(original_np_random_state)
+# Reset to the original random seed state after Step 3
+np.random.set_state(original_np_random_state)
 
-# # Save the aggregate values to pickle in the ANALYSIS_DIR
-# with open(f'{ANALYSIS_DIR}/k_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(P_aggregate_vals, f)
-
-
-# #### 4. d: Number of DEGs
-
-# SCORE_TYPE = 'scores' # or 'logfoldchanges'
-# names_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_names_df_vsctrl.pkl')
-# scores_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_scores_df_vsctrl.pkl')
+# Save the aggregate values to pickle in the ANALYSIS_DIR
+with open(f'{ANALYSIS_DIR}/k_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(P_aggregate_vals, f)
 
 
-# # Get the number of DEGs for each pert. Get this as a dataframe
-# degs_per_pert_vsctrl = {pert: len(adata.uns[f'deg_dict_vscontrol'][pert]['down']) + len(adata.uns[f'deg_dict_vscontrol'][pert]['up']) for pert in pert_counts.index}
-# degs_per_pert_df_vsctrl = pd.DataFrame(list(degs_per_pert_vsctrl.items()), columns=['pert', 'n_degs'])
+#### 4. d: Number of DEGs
 
-# # Remove the control from the dataframe
-# degs_per_pert_df_vsctrl = degs_per_pert_df_vsctrl[degs_per_pert_df_vsctrl['pert'] != 'control']
-
-# # Sweep across 20% quantiles tiled so that half overlap each time. E.g., 0-20%, 10-30%, 20-40%, etc.
-# degs_per_pert_df_vsctrl['n_degs_ranked'] = degs_per_pert_df_vsctrl['n_degs'].rank(pct=True)
-
-# corr_delta_dict = {}
-# mae_dict = {}
-# mse_dict = {}
-
-# ctrl_mean_original_center = total_mean_original
-
-# for i in tqdm(range(9)):
-#     lower_bound = i * .1
-#     upper_bound = lower_bound + .20
-#     # Round upper to  one decimal place
-#     upper_bound = round(upper_bound, 1)
-#     # Round lower to  one decimal place
-#     lower_bound = round(lower_bound, 1)
-#     pert_subset = degs_per_pert_df_vsctrl[degs_per_pert_df_vsctrl['n_degs_ranked'] >= lower_bound]
-#     pert_subset = pert_subset[pert_subset['n_degs_ranked'] < upper_bound]
-
-#     quantile_range_key = f'{lower_bound}-{upper_bound}'
-#     # Initialize the dicts for these pert subsets
-#     corr_delta_dict[quantile_range_key] = {}
-#     mae_dict[quantile_range_key] = {}
-#     mse_dict[quantile_range_key] = {}
+SCORE_TYPE = 'scores' # or 'logfoldchanges'
+names_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_names_df_vsctrl.pkl')
+scores_df_vsctrl = pd.read_pickle(f'{DATA_CACHE_DIR}/{DATASET_NAME}/{DATASET_NAME}_scores_df_vsctrl.pkl')
 
 
-#     total_mean_subset = np.array([pert_means[pert] for pert in pert_subset['pert']]).mean(axis=0)
-#     delta_all_vs_control = total_mean_subset - ctrl_mean_original_center
+# Get the number of DEGs for each pert. Get this as a dataframe
+degs_per_pert_vsctrl = {pert: len(adata.uns[f'deg_dict_vscontrol'][pert]['down']) + len(adata.uns[f'deg_dict_vscontrol'][pert]['up']) for pert in pert_counts.index}
+degs_per_pert_df_vsctrl = pd.DataFrame(list(degs_per_pert_vsctrl.items()), columns=['pert', 'n_degs'])
 
-#     # For each pert in the subset, calculate the metrics
-#     for pert in pert_subset['pert']:
-#         pert_mean = pert_means[pert]
-#         delta_pert_vs_control = pert_mean - ctrl_mean_original_center
+# Remove the control from the dataframe
+degs_per_pert_df_vsctrl = degs_per_pert_df_vsctrl[degs_per_pert_df_vsctrl['pert'] != 'control']
+
+# Sweep across 20% quantiles tiled so that half overlap each time. E.g., 0-20%, 10-30%, 20-40%, etc.
+degs_per_pert_df_vsctrl['n_degs_ranked'] = degs_per_pert_df_vsctrl['n_degs'].rank(pct=True)
+
+corr_delta_dict = {}
+mae_dict = {}
+mse_dict = {}
+
+ctrl_mean_original_center = total_mean_original
+
+for i in tqdm(range(9)):
+    lower_bound = i * .1
+    upper_bound = lower_bound + .20
+    # Round upper to  one decimal place
+    upper_bound = round(upper_bound, 1)
+    # Round lower to  one decimal place
+    lower_bound = round(lower_bound, 1)
+    pert_subset = degs_per_pert_df_vsctrl[degs_per_pert_df_vsctrl['n_degs_ranked'] >= lower_bound]
+    pert_subset = pert_subset[pert_subset['n_degs_ranked'] < upper_bound]
+
+    quantile_range_key = f'{lower_bound}-{upper_bound}'
+    # Initialize the dicts for these pert subsets
+    corr_delta_dict[quantile_range_key] = {}
+    mae_dict[quantile_range_key] = {}
+    mse_dict[quantile_range_key] = {}
+
+
+    total_mean_subset = np.array([pert_means[pert] for pert in pert_subset['pert']]).mean(axis=0)
+    delta_all_vs_control = total_mean_subset - ctrl_mean_original_center
+
+    # For each pert in the subset, calculate the metrics
+    for pert in pert_subset['pert']:
+        pert_mean = pert_means[pert]
+        delta_pert_vs_control = pert_mean - ctrl_mean_original_center
             
-#         current_pearson_result = pearson(delta_all_vs_control, delta_pert_vs_control)
-#         corr_delta_dict[quantile_range_key][pert] = current_pearson_result
+        current_pearson_result = pearson(delta_all_vs_control, delta_pert_vs_control)
+        corr_delta_dict[quantile_range_key][pert] = current_pearson_result
 
-#         mae_dict[quantile_range_key][pert] = mae(pert_mean, total_mean_subset)
-#         mse_dict[quantile_range_key][pert] = mse(pert_mean, total_mean_subset)
-# metric_dicts = {
-#     'corr_delta_dict': corr_delta_dict,
-#     'mae_dict': mae_dict,
-#     'mse_dict': mse_dict
-# }
+        mae_dict[quantile_range_key][pert] = mae(pert_mean, total_mean_subset)
+        mse_dict[quantile_range_key][pert] = mse(pert_mean, total_mean_subset)
+metric_dicts = {
+    'corr_delta_dict': corr_delta_dict,
+    'mae_dict': mae_dict,
+    'mse_dict': mse_dict
+}
 
-# # Plot the metrics as a scatter plot
-# PLOT_DIR = f'{ANALYSIS_DIR}/d_effect_of_n_degs'
-# plot_pert_strength_scatter(corr_delta_dict, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='DEG quantile range', ylabel='Pearson R')
-# plot_pert_strength_scatter(mae_dict, PLOT_DIR, 'MAE', DATASET_NAME, xlabel='DEG quantile range', ylabel='MAE')
-# plot_pert_strength_scatter(mse_dict, PLOT_DIR, 'MSE', DATASET_NAME, xlabel='DEG quantile range', ylabel='MSE') # Replaced by combined plot
+# Plot the metrics as a scatter plot
+PLOT_DIR = f'{ANALYSIS_DIR}/d_effect_of_n_degs'
+plot_pert_strength_scatter(corr_delta_dict, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='DEG quantile range', ylabel='Pearson R')
+plot_pert_strength_scatter(mae_dict, PLOT_DIR, 'MAE', DATASET_NAME, xlabel='DEG quantile range', ylabel='MAE')
+plot_pert_strength_scatter(mse_dict, PLOT_DIR, 'MSE', DATASET_NAME, xlabel='DEG quantile range', ylabel='MSE') # Replaced by combined plot
 
-# # Get the aggregate values for the metrics
-# d_aggregate_vals = {}
-# for metric_name in ['corr_delta', 'mae', 'mse']:
-#     metric_dict_key = f'{metric_name}_dict'
-#     d_aggregate_vals[metric_dict_key] = get_aggregate_correlation_for_categorical_levels(metric_dicts[metric_dict_key])
+# Get the aggregate values for the metrics
+d_aggregate_vals = {}
+for metric_name in ['corr_delta', 'mae', 'mse']:
+    metric_dict_key = f'{metric_name}_dict'
+    d_aggregate_vals[metric_dict_key] = get_aggregate_correlation_for_categorical_levels(metric_dicts[metric_dict_key])
     
-# with open(f'{ANALYSIS_DIR}/d_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(d_aggregate_vals, f)
+with open(f'{ANALYSIS_DIR}/d_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(d_aggregate_vals, f)
 
 
-# #### 5. E: Effect size of DEGs
+#### 5. E: Effect size of DEGs
 
-# # Get the scores for each of the DEGs for each perturbation
-# deg_by_quantile_dict_vsctrl = {}
-# for pert in tqdm(adata.obs['condition'].unique()):
-#     if pert == 'control':
-#         continue
-#     # Get the gene names
-#     pert_degs_vsrest = names_df_vsrest[pert]
-#     pert_scores_vsrest = np.abs(scores_df_vsrest[pert])
-#     pert_degs_vsctrl = names_df_vsctrl[pert]
-#     pert_scores_vsctrl = np.abs(scores_df_vsctrl[pert])
-#     # Rank the scores
-#     pert_scores_ranked_vsrest = pert_scores_vsrest.rank(pct=True)
-#     pert_scores_ranked_vsctrl = pert_scores_vsctrl.rank(pct=True)
-#     quantiles = np.arange(0, 1, 0.1)
-#     deg_by_quantile_dict_vsctrl[pert] = {}
-#     # For each quantile, get the DEGs
-#     for i, quantile in enumerate(quantiles):
-#         # For the last quantile, set the next quantile to 1
-#         if i == len(quantiles) - 1:
-#             next_quantile = 1
-#         else:
-#             next_quantile = quantiles[i+1]
-#         pert_degs_quantile_vsrest = pert_degs_vsrest[(pert_scores_ranked_vsrest >= quantile) & (pert_scores_ranked_vsrest < next_quantile)]
-#         pert_degs_quantile_vsctrl = pert_degs_vsctrl[(pert_scores_ranked_vsctrl >= quantile) & (pert_scores_ranked_vsctrl < next_quantile)]
-#         quantile = round(quantile, 1)
-#         next_quantile = round(next_quantile, 1)
-#         deg_by_quantile_dict_vsctrl[pert][f"{quantile}-{next_quantile}"] = pert_degs_quantile_vsctrl.tolist()
+# Get the scores for each of the DEGs for each perturbation
+deg_by_quantile_dict_vsctrl = {}
+for pert in tqdm(adata.obs['condition'].unique()):
+    if pert == 'control':
+        continue
+    # Get the gene names
+    pert_degs_vsrest = names_df_vsrest[pert]
+    pert_scores_vsrest = np.abs(scores_df_vsrest[pert])
+    pert_degs_vsctrl = names_df_vsctrl[pert]
+    pert_scores_vsctrl = np.abs(scores_df_vsctrl[pert])
+    # Rank the scores
+    pert_scores_ranked_vsrest = pert_scores_vsrest.rank(pct=True)
+    pert_scores_ranked_vsctrl = pert_scores_vsctrl.rank(pct=True)
+    quantiles = np.arange(0, 1, 0.1)
+    deg_by_quantile_dict_vsctrl[pert] = {}
+    # For each quantile, get the DEGs
+    for i, quantile in enumerate(quantiles):
+        # For the last quantile, set the next quantile to 1
+        if i == len(quantiles) - 1:
+            next_quantile = 1
+        else:
+            next_quantile = quantiles[i+1]
+        pert_degs_quantile_vsrest = pert_degs_vsrest[(pert_scores_ranked_vsrest >= quantile) & (pert_scores_ranked_vsrest < next_quantile)]
+        pert_degs_quantile_vsctrl = pert_degs_vsctrl[(pert_scores_ranked_vsctrl >= quantile) & (pert_scores_ranked_vsctrl < next_quantile)]
+        quantile = round(quantile, 1)
+        next_quantile = round(next_quantile, 1)
+        deg_by_quantile_dict_vsctrl[pert][f"{quantile}-{next_quantile}"] = pert_degs_quantile_vsctrl.tolist()
 
-# # Sweep across the quantiles
-# # Get the delta for each pert
-# corr_delta_dict_vsctrl = {}
+# Sweep across the quantiles
+# Get the delta for each pert
+corr_delta_dict_vsctrl = {}
 
-# for pert, _ in tqdm(deg_by_quantile_dict_vsctrl.items()):
-#     corr_delta_dict_vsctrl[pert] = {}
+for pert, _ in tqdm(deg_by_quantile_dict_vsctrl.items()):
+    corr_delta_dict_vsctrl[pert] = {}
 
-#     quantiles_vsctrl = deg_by_quantile_dict_vsctrl[pert]
-#     for quantile_range, _ in quantiles_vsctrl.items():
-#         degs_vsctrl = quantiles_vsctrl[quantile_range]
-#         degs_idx_vsctrl = adata.var_names.isin(degs_vsctrl)
-#         # Get calculate the pert mean wrt these degs
-#         pert_mean_degs_vsctrl = pert_means[pert][degs_idx_vsctrl]
-#         # Calculate the control mean wrt these degs
-#         ctrl_mean_degs_vsctrl = ctrl_mean_original[degs_idx_vsctrl]
-#         # total_mean_degs
-#         total_mean_degs_vsctrl = total_mean_original[degs_idx_vsctrl]
-#         # Calculate the delta
-#         delta_pert_vs_control_vsctrl = pert_mean_degs_vsctrl - ctrl_mean_degs_vsctrl
-#         # Calculate the delta_all_vs_control
-#         delta_all_vs_control_vsctrl = total_mean_degs_vsctrl - ctrl_mean_degs_vsctrl
-#         # Calculate the pearson correlation
-#         pearson_vsctrl = pearson(delta_all_vs_control_vsctrl, delta_pert_vs_control_vsctrl)
-#         corr_delta_dict_vsctrl[pert][quantile_range] = pearson_vsctrl
+    quantiles_vsctrl = deg_by_quantile_dict_vsctrl[pert]
+    for quantile_range, _ in quantiles_vsctrl.items():
+        degs_vsctrl = quantiles_vsctrl[quantile_range]
+        degs_idx_vsctrl = adata.var_names.isin(degs_vsctrl)
+        # Get calculate the pert mean wrt these degs
+        pert_mean_degs_vsctrl = pert_means[pert][degs_idx_vsctrl]
+        # Calculate the control mean wrt these degs
+        ctrl_mean_degs_vsctrl = ctrl_mean_original[degs_idx_vsctrl]
+        # total_mean_degs
+        total_mean_degs_vsctrl = total_mean_original[degs_idx_vsctrl]
+        # Calculate the delta
+        delta_pert_vs_control_vsctrl = pert_mean_degs_vsctrl - ctrl_mean_degs_vsctrl
+        # Calculate the delta_all_vs_control
+        delta_all_vs_control_vsctrl = total_mean_degs_vsctrl - ctrl_mean_degs_vsctrl
+        # Calculate the pearson correlation
+        pearson_vsctrl = pearson(delta_all_vs_control_vsctrl, delta_pert_vs_control_vsctrl)
+        corr_delta_dict_vsctrl[pert][quantile_range] = pearson_vsctrl
 
-# # Plot the metrics as a scatter plot
-# PLOT_DIR = f'{ANALYSIS_DIR}/E_effect_of_degs_effect_size'
-# plot_categorical_scatter_trend(corr_delta_dict_vsctrl, PLOT_DIR, 'Pearson delta perturbation vs all (DEGs vs ctrl)', DATASET_NAME, xlabel='DEG quantile range', ylabel='Pearson R')
+# Plot the metrics as a scatter plot
+PLOT_DIR = f'{ANALYSIS_DIR}/E_effect_of_degs_effect_size'
+plot_categorical_scatter_trend(corr_delta_dict_vsctrl, PLOT_DIR, 'Pearson delta perturbation vs all (DEGs vs ctrl)', DATASET_NAME, xlabel='DEG quantile range', ylabel='Pearson R')
 
-# # Get the aggregate values for the metrics
-# E_aggregate_vals = {}
-# E_aggregate_vals['corr_delta_dict'] = get_aggregate_correlation_from_dict_categorical(corr_delta_dict_vsctrl)
-# with open(f'{ANALYSIS_DIR}/E_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(E_aggregate_vals, f)
+# Get the aggregate values for the metrics
+E_aggregate_vals = {}
+E_aggregate_vals['corr_delta_dict'] = get_aggregate_correlation_from_dict_categorical(corr_delta_dict_vsctrl)
+with open(f'{ANALYSIS_DIR}/E_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(E_aggregate_vals, f)
 
 
 #### 6. B: Control bias
@@ -895,142 +888,142 @@ plt.close(fig)
 
 
 
-# #### 7. g: Number of genes
+#### 7. g: Number of genes
 
-# mae_dict_n_genes = {}
-# mse_dict_n_genes = {}
-# corr_delta_dict_n_genes = {}
+mae_dict_n_genes = {}
+mse_dict_n_genes = {}
+corr_delta_dict_n_genes = {}
 
-# n_genes_to_test = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
+n_genes_to_test = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
 
-# for n_genes in tqdm(n_genes_to_test):
-#     # Randomly select n_genes from the adata object
-#     random_genes = np.random.choice(adata.var_names, size=n_genes, replace=False)
-#     random_genes_idx = adata.var_names.isin(random_genes)
+for n_genes in tqdm(n_genes_to_test):
+    # Randomly select n_genes from the adata object
+    random_genes = np.random.choice(adata.var_names, size=n_genes, replace=False)
+    random_genes_idx = adata.var_names.isin(random_genes)
 
-#     # Get total mean with the random genes
-#     total_mean_random_genes = total_mean_original[random_genes_idx]
-#     # Get control mean with the random genes
-#     ctrl_mean_random_genes = ctrl_mean_original[random_genes_idx]
+    # Get total mean with the random genes
+    total_mean_random_genes = total_mean_original[random_genes_idx]
+    # Get control mean with the random genes
+    ctrl_mean_random_genes = ctrl_mean_original[random_genes_idx]
 
-#     # For each pert, calculate metrics
-#     for pert in all_perts:
-#         if not pert in mae_dict_n_genes.keys():
-#             mae_dict_n_genes[pert] = {}
-#             mse_dict_n_genes[pert] = {}
-#             corr_delta_dict_n_genes[pert] = {}
-#         # Get the mean of the pert
-#         pert_mean_random_genes = pert_means[pert][random_genes_idx]
+    # For each pert, calculate metrics
+    for pert in all_perts:
+        if not pert in mae_dict_n_genes.keys():
+            mae_dict_n_genes[pert] = {}
+            mse_dict_n_genes[pert] = {}
+            corr_delta_dict_n_genes[pert] = {}
+        # Get the mean of the pert
+        pert_mean_random_genes = pert_means[pert][random_genes_idx]
         
-#         # Calculate metrics
-#         mae_dict_n_genes[pert][n_genes] = mae(total_mean_random_genes, pert_mean_random_genes)
-#         mse_dict_n_genes[pert][n_genes] = mse(total_mean_random_genes, pert_mean_random_genes)
-#         current_pearson_delta = pearson(total_mean_random_genes - ctrl_mean_random_genes, pert_mean_random_genes - ctrl_mean_random_genes)
-#         corr_delta_dict_n_genes[pert][n_genes] = current_pearson_delta
+        # Calculate metrics
+        mae_dict_n_genes[pert][n_genes] = mae(total_mean_random_genes, pert_mean_random_genes)
+        mse_dict_n_genes[pert][n_genes] = mse(total_mean_random_genes, pert_mean_random_genes)
+        current_pearson_delta = pearson(total_mean_random_genes - ctrl_mean_random_genes, pert_mean_random_genes - ctrl_mean_random_genes)
+        corr_delta_dict_n_genes[pert][n_genes] = current_pearson_delta
 
-# # Plot the metrics as a scatter plot
-# PLOT_DIR = f'{ANALYSIS_DIR}/g_effect_of_n_genes'
-# plot_metrics_as_scatter_trend(mae_dict_n_genes, PLOT_DIR, 'MAE perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='MAE')
-# plot_metrics_as_scatter_trend(mse_dict_n_genes, PLOT_DIR, 'MSE perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='MSE')
-# plot_metrics_as_scatter_trend(corr_delta_dict_n_genes, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='Pearson R')
+# Plot the metrics as a scatter plot
+PLOT_DIR = f'{ANALYSIS_DIR}/g_effect_of_n_genes'
+plot_metrics_as_scatter_trend(mae_dict_n_genes, PLOT_DIR, 'MAE perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='MAE')
+plot_metrics_as_scatter_trend(mse_dict_n_genes, PLOT_DIR, 'MSE perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='MSE')
+plot_metrics_as_scatter_trend(corr_delta_dict_n_genes, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='Number of genes', ylabel='Pearson R')
 
-# # Get the aggregate values for the metrics
-# metric_dicts = {
-#     'mae_dict': mae_dict_n_genes,
-#     'mse_dict': mse_dict_n_genes,
-#     'corr_delta_dict': corr_delta_dict_n_genes
-# }
-# aggregate_vals = {}
-# for metric_name in ['mae', 'mse', 'corr_delta']:
-#     metric_dict_key = f'{metric_name}_dict'
-#     # Use get_aggregate_correlation_from_dict()
-#     aggregate_vals[metric_name] = get_aggregate_correlation_from_dict(metric_dicts[metric_dict_key], log_x=True, log_x_base=2)
+# Get the aggregate values for the metrics
+metric_dicts = {
+    'mae_dict': mae_dict_n_genes,
+    'mse_dict': mse_dict_n_genes,
+    'corr_delta_dict': corr_delta_dict_n_genes
+}
+aggregate_vals = {}
+for metric_name in ['mae', 'mse', 'corr_delta']:
+    metric_dict_key = f'{metric_name}_dict'
+    # Use get_aggregate_correlation_from_dict()
+    aggregate_vals[metric_name] = get_aggregate_correlation_from_dict(metric_dicts[metric_dict_key], log_x=True, log_x_base=2)
 
-# with open(f'{ANALYSIS_DIR}/g_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(aggregate_vals, f)
+with open(f'{ANALYSIS_DIR}/g_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(aggregate_vals, f)
 
-# #### 8. mu_l: effect of library size
+#### 8. mu_l: effect of library size
 
-# n_counts = adata.obs['ncounts'].values
+n_counts = adata.obs['ncounts'].values
 
-# # Get the quantiles for the perturbed and the control cells
-# quantiles = np.arange(0, 1, 0.1)
+# Get the quantiles for the perturbed and the control cells
+quantiles = np.arange(0, 1, 0.1)
 
-# # For each perturbation get the quantiles of the library size and the associated cells
-# # Then get the mean of the quantile-specific pert cells
-# # Then we aggregate the means to get the total_mean for each quantile
-# pert_mean_quantile_dict = {}
-# total_mean_quantile_dict = {}
-# ctrl_mean_quantile_dict = {}
-# for i, quantile in tqdm(enumerate(quantiles)):
-#     quantile_next = quantiles[i+1] if i < len(quantiles) - 1 else 1
-#     quantile_string = f"{quantile:.1f}-{quantile_next:.1f}"
-#     pert_mean_quantile_dict[quantile_string] = {}
-#     total_mean_quantile_dict[quantile_string] = {}
-#     ctrl_mean_quantile_dict[quantile_string] = {}
-#     for pert in all_perts:
-#         pert_cells_idx = adata.obs['condition'] == pert
-#         pert_n_counts = n_counts[pert_cells_idx]
-#         cell_ids = adata.obs_names[pert_cells_idx]
-#         # Rank the pert_n_counts
-#         pert_n_counts_ranked = pd.Series(pert_n_counts).rank(pct=True).values
-#         # Get the cells that are in the quantile
-#         quantile_cells_idx = (pert_n_counts_ranked >= quantile) & (pert_n_counts_ranked < quantile_next)
-#         # Get the mean of the pert cells
-#         pert_mean_quantile_dict[quantile_string][pert] = adata[cell_ids[quantile_cells_idx]].X.mean(axis=0).A1
+# For each perturbation get the quantiles of the library size and the associated cells
+# Then get the mean of the quantile-specific pert cells
+# Then we aggregate the means to get the total_mean for each quantile
+pert_mean_quantile_dict = {}
+total_mean_quantile_dict = {}
+ctrl_mean_quantile_dict = {}
+for i, quantile in tqdm(enumerate(quantiles)):
+    quantile_next = quantiles[i+1] if i < len(quantiles) - 1 else 1
+    quantile_string = f"{quantile:.1f}-{quantile_next:.1f}"
+    pert_mean_quantile_dict[quantile_string] = {}
+    total_mean_quantile_dict[quantile_string] = {}
+    ctrl_mean_quantile_dict[quantile_string] = {}
+    for pert in all_perts:
+        pert_cells_idx = adata.obs['condition'] == pert
+        pert_n_counts = n_counts[pert_cells_idx]
+        cell_ids = adata.obs_names[pert_cells_idx]
+        # Rank the pert_n_counts
+        pert_n_counts_ranked = pd.Series(pert_n_counts).rank(pct=True).values
+        # Get the cells that are in the quantile
+        quantile_cells_idx = (pert_n_counts_ranked >= quantile) & (pert_n_counts_ranked < quantile_next)
+        # Get the mean of the pert cells
+        pert_mean_quantile_dict[quantile_string][pert] = adata[cell_ids[quantile_cells_idx]].X.mean(axis=0).A1
     
-#     # Get the total mean of the quantile by averaging all the pert means in that quantile
-#     total_mean_quantile_dict[quantile_string] = np.mean(list(pert_mean_quantile_dict[quantile_string].values()), axis=0)
-#     # Get the control mean of the quantile by finding the cells that are in the quantile and then averaging their means
-#     ctrl_cells_idx = adata.obs['condition'] == 'control'
-#     cell_ids = adata.obs_names[ctrl_cells_idx]
-#     ctrl_n_counts = n_counts[ctrl_cells_idx]
-#     ctrl_n_counts_ranked = pd.Series(ctrl_n_counts).rank(pct=True).values
-#     ctrl_quantile_cells_idx = (ctrl_n_counts_ranked >= quantile) & (ctrl_n_counts_ranked < quantile_next)
-#     ctrl_mean_quantile_dict[quantile_string] = adata[cell_ids[ctrl_quantile_cells_idx]].X.mean(axis=0).A1
+    # Get the total mean of the quantile by averaging all the pert means in that quantile
+    total_mean_quantile_dict[quantile_string] = np.mean(list(pert_mean_quantile_dict[quantile_string].values()), axis=0)
+    # Get the control mean of the quantile by finding the cells that are in the quantile and then averaging their means
+    ctrl_cells_idx = adata.obs['condition'] == 'control'
+    cell_ids = adata.obs_names[ctrl_cells_idx]
+    ctrl_n_counts = n_counts[ctrl_cells_idx]
+    ctrl_n_counts_ranked = pd.Series(ctrl_n_counts).rank(pct=True).values
+    ctrl_quantile_cells_idx = (ctrl_n_counts_ranked >= quantile) & (ctrl_n_counts_ranked < quantile_next)
+    ctrl_mean_quantile_dict[quantile_string] = adata[cell_ids[ctrl_quantile_cells_idx]].X.mean(axis=0).A1
 
-# # Then calculate the metrics
-# mae_dict_theta = {}
-# mse_dict_theta = {}
-# corr_delta_dict_theta = {}
+# Then calculate the metrics
+mae_dict_theta = {}
+mse_dict_theta = {}
+corr_delta_dict_theta = {}
 
-# for pert in tqdm(all_perts):
-#     mae_dict_theta[pert] = {}
-#     mse_dict_theta[pert] = {}
-#     corr_delta_dict_theta[pert] = {}
+for pert in tqdm(all_perts):
+    mae_dict_theta[pert] = {}
+    mse_dict_theta[pert] = {}
+    corr_delta_dict_theta[pert] = {}
 
-#     for quantile_string in pert_mean_quantile_dict.keys():
-#         pert_mean_qt = pert_mean_quantile_dict[quantile_string][pert]
-#         total_mean_qt = total_mean_quantile_dict[quantile_string]
+    for quantile_string in pert_mean_quantile_dict.keys():
+        pert_mean_qt = pert_mean_quantile_dict[quantile_string][pert]
+        total_mean_qt = total_mean_quantile_dict[quantile_string]
 
-#         mae_dict_theta[pert][quantile_string] = mae(total_mean_qt, pert_mean_qt)
-#         mse_dict_theta[pert][quantile_string] = mse(total_mean_qt, pert_mean_qt)
+        mae_dict_theta[pert][quantile_string] = mae(total_mean_qt, pert_mean_qt)
+        mse_dict_theta[pert][quantile_string] = mse(total_mean_qt, pert_mean_qt)
         
-#         delta_pert_vs_control = pert_mean_qt - ctrl_mean_quantile_dict[quantile_string]
-#         delta_all_vs_control = total_mean_quantile_dict[quantile_string] - ctrl_mean_quantile_dict[quantile_string] 
-#         current_pearson_delta = pearson(delta_all_vs_control, delta_pert_vs_control)
-#         corr_delta_dict_theta[pert][quantile_string] = current_pearson_delta
+        delta_pert_vs_control = pert_mean_qt - ctrl_mean_quantile_dict[quantile_string]
+        delta_all_vs_control = total_mean_quantile_dict[quantile_string] - ctrl_mean_quantile_dict[quantile_string] 
+        current_pearson_delta = pearson(delta_all_vs_control, delta_pert_vs_control)
+        corr_delta_dict_theta[pert][quantile_string] = current_pearson_delta
 
-# # Plot the metrics as a scatter plot
-# PLOT_DIR = f'{ANALYSIS_DIR}/mu_l_effect_of_library_size'
-# plot_categorical_scatter_trend(mae_dict_theta, PLOT_DIR, 'MAE perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='MAE')
-# plot_categorical_scatter_trend(mse_dict_theta, PLOT_DIR, 'MSE perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='MSE')
-# plot_categorical_scatter_trend(corr_delta_dict_theta, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='Pearson R')
+# Plot the metrics as a scatter plot
+PLOT_DIR = f'{ANALYSIS_DIR}/mu_l_effect_of_library_size'
+plot_categorical_scatter_trend(mae_dict_theta, PLOT_DIR, 'MAE perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='MAE')
+plot_categorical_scatter_trend(mse_dict_theta, PLOT_DIR, 'MSE perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='MSE')
+plot_categorical_scatter_trend(corr_delta_dict_theta, PLOT_DIR, 'Pearson delta perturbation vs all', DATASET_NAME, xlabel='Quantile of library size', ylabel='Pearson R')
 
-# # Get the aggregate values for the metrics
-# metric_dicts = {
-#     'mae_dict': mae_dict_theta,
-#     'mse_dict': mse_dict_theta,
-#     'corr_delta_dict': corr_delta_dict_theta
-# }
-# aggregate_vals = {}
-# for metric_name in ['mae', 'mse', 'corr_delta']:
-#     metric_dict_key = f'{metric_name}_dict'
-#     # Use get_aggregate_correlation_from_dict()
-#     aggregate_vals[metric_name] = get_aggregate_correlation_from_dict_categorical(metric_dicts[metric_dict_key])
+# Get the aggregate values for the metrics
+metric_dicts = {
+    'mae_dict': mae_dict_theta,
+    'mse_dict': mse_dict_theta,
+    'corr_delta_dict': corr_delta_dict_theta
+}
+aggregate_vals = {}
+for metric_name in ['mae', 'mse', 'corr_delta']:
+    metric_dict_key = f'{metric_name}_dict'
+    # Use get_aggregate_correlation_from_dict()
+    aggregate_vals[metric_name] = get_aggregate_correlation_from_dict_categorical(metric_dicts[metric_dict_key])
 
-# with open(f'{ANALYSIS_DIR}/mu_l_aggregate_vals.pkl', 'wb') as f:
-#     pickle.dump(aggregate_vals, f)
+with open(f'{ANALYSIS_DIR}/mu_l_aggregate_vals.pkl', 'wb') as f:
+    pickle.dump(aggregate_vals, f)
 
 
 

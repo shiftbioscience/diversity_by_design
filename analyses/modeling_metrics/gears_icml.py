@@ -96,7 +96,7 @@ class GEARS:
         self.use_mse_loss = use_mse_loss
 
         self.ctrl_expression = torch.tensor(
-            np.mean(self.adata.X[self.adata.obs.condition == 'ctrl'],
+            np.mean(self.adata[self.adata.obs.condition == 'ctrl'].X,
                     axis=0)).reshape(-1, ).to(self.device)
         pert_full_id2pert = dict(self.adata.obs[['condition_name', 'condition']].values)
         self.dict_filter = {pert_full_id2pert[i]: j for i, j in

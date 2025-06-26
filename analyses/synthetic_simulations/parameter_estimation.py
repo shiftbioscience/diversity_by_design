@@ -27,7 +27,7 @@ adata = sc.read_h5ad(cache_path + "data/norman19/norman19_processed.h5ad")
 
 # Read the list of norman19 genes to use
 print("Reading norman19 genes list...")
-norman19_genes = pd.read_csv(cache_path + "simulations/norman19_genes.csv.gz", compression='gzip', index_col=0)
+norman19_genes = pd.read_csv(cache_path + "data/norman19/norman19_genes.csv.gz", compression='gzip', index_col=0)
 norman19_gene_ids = set(norman19_genes.index)
 
 # Filter the dataset to only include the selected genes
@@ -240,11 +240,11 @@ def fit_all_negative_binomials(adata, layer='counts', plot_path=None):
     
     return params_df
 
-results_path = 'parameter_estimation' if local_run else 'simulations/parameter_estimation'
+results_path = 'parameter_estimation' if local_run else 'analyses/synthetic_simulations/parameter_estimation'
 
 # Fit negative binomials for all genes in control data
 print("\nFitting negative binomials for control cells...")
-all_fitted_params_df = fit_all_negative_binomials(
+all_fitted_params_df_control = fit_all_negative_binomials(
     adata_control, 
     layer='counts', 
     plot_path=results_path + "/control_parameter_estimation"
@@ -267,7 +267,7 @@ all_fitted_params_df_all = fit_all_negative_binomials(
 )
 
 # Save the fitted parameters
-all_fitted_params_df.to_csv(results_path + "/control_fitted_params.csv")
+all_fitted_params_df_control.to_csv(results_path + "/control_fitted_params.csv")
 all_fitted_params_df_perturbed.to_csv(results_path + "/perturbed_fitted_params.csv")
 all_fitted_params_df_all.to_csv(results_path + "/all_fitted_params.csv")
 
@@ -390,7 +390,7 @@ combined_data = []
 for param in params:
     # Control data
     control_df = pd.DataFrame({
-        'Value': all_fitted_params_df[param],
+        'Value': all_fitted_params_df_control[param],
         'Parameter': param,
         'Dataset': 'Control'
     })

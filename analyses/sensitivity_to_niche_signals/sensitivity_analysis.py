@@ -15,10 +15,10 @@ from common import *
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_name', type=str, required=True)
+parser.add_argument('--dataset', type=str, required=True)
 args = parser.parse_args()
 
-DATASET_NAME = args.dataset_name
+DATASET_NAME = args.dataset
 
 # Initialize analysis using the common function
 (

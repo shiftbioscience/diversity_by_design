@@ -1,9 +1,0 @@
-ipdb
-ipykernel
-ipython
-matplotlib
-matplotlib-inline
-scanpy
-scienceplots
-scipy
-
