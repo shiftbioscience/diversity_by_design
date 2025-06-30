@@ -1,5 +1,19 @@
-# ICML_workshop
-Code for the ICML workshop preprint
+# Diversity by Design: Addressing Mode Collapse Improves scRNA-seq Perturbation Modeling on Well-Calibrated Metrics
+
+[Gabriel Mejía](https://scholar.google.com/citations?hl=es&user=yh69hnYAAAAJ)<sup>1</sup>\*, [Henry E. Miller](https://scholar.google.com/citations?user=Sw9t-h0AAAAJ&hl=en)<sup>1</sup>\*, [Francis J. A. Leblanc](https://scholar.google.com/citations?user=yFI4c_0AAAAJ&hl=en)<sup>1</sup>, [Bo Wang](https://scholar.google.ca/citations?user=37FDILIAAAAJ&hl=en)<sup>2</sup>, [Brendan Swain](https://scholar.google.com/citations?user=UH0zyDoAAAAJ&hl=en)<sup>1</sup>, [Lucas Paulo de Lima Camillo](https://scholar.google.com/citations?user=qEpmbq8AAAAJ&hl=en)<sup>1</sup>
+
+<br/>
+<font size="1"><sup>*</sup>Equal contribution.</font><br/>
+<font size="1"><sup>1 </sup> Shift Bioscience, Cambridge, UK.</font><br/>
+<font size="1"><sup>2 </sup> University of Toronto, Vector Institute, Toronto, Canada.</font><br/>
+
+- ArXiv Preprint [here](https://www.biorxiv.org/content/10.1101/2025.06.05.657370v1)
+
+### Abstract
+
+Recent benchmarks reveal that models for single-cell perturbation response are often outperformed by simply predicting the dataset mean. We trace this anomaly to a metric artifact: control-referenced deltas and unweighted error metrics reward mode collapse whenever the control is biased or the biological signal is sparse. Large-scale *in silico* simulations and analysis of two real-world perturbation datasets confirm that shared reference shifts, not genuine biological change, drives high performance in these evaluations. We introduce differentially expressed gene (DEG)–aware metrics, weighted mean-squared error (WMSE) and weighted delta $R^{2}~~(R^{2}_{w}(\Delta))$ with respect to all perturbations, that measure error in niche signals with high sensitivity. We further introduce negative and positive performance baselines to calibrate these metrics. With these improvements, the mean baseline sinks to null performance while genuine predictors are correctly rewarded. Finally, we show that using WMSE as a loss function reduces mode collapse and improves model performance.
+
+![Graphical_abstrac](https://github.com/user-attachments/assets/9778527b-d8f4-4e90-9576-68e9479d9491)
 
 ## Getting started
 
