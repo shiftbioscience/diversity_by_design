@@ -7,7 +7,7 @@
 <font size="1"><sup>1 </sup> Shift Bioscience, Cambridge, UK.</font><br/>
 <font size="1"><sup>2 </sup> University of Toronto, Vector Institute, Toronto, Canada.</font><br/>
 
-- ArXiv Preprint [here](https://www.biorxiv.org/content/10.1101/2025.06.05.657370v1)
+- ArXiv Preprint [here](https://arxiv.org/abs/2506.22641)
 
 ### Abstract
 
